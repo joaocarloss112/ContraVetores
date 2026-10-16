@@ -8,7 +8,7 @@ class Usuario(AbstractUser):
     GESTAO = 'GESTAO', 'Gestão Municipal'
 
   tipo = models.CharField(
-      max_length=20, choices=TipoUsuario.choices, default=TipoUsuario.AGENTE
+      max_length=20, choices=TipoUsuario.choices, default=TipoUsuario.GESTAO
   )
   telefone = models.CharField(max_length=15, blank=True, null=True)
 
