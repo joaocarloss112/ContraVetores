@@ -157,61 +157,29 @@ Antes de publicar: mover `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis
 
 **Etapa 03/06: Mitigação de risco e validação ponta a ponta** (16/10/2026)
 - [x] Repositório Git com o core do back-end (Django REST)
-- [ ] Fluxo de denúncia com persistência real
-- [ ] Screencast do funcionamento do núcleo
+- [x] Fluxo de denúncia "happy path" dentro do escopo do HiFi
 
-### Planejado: Etapa 04/06 (MVP universitário)
+### Planejado
 
-> [!IMPORTANT]
-> Os blocos abaixo são os requisitos levantados pela equipe para a Etapa 04. Cada um está escrito para virar uma issue: título, descrição e critérios de aceite.
+> [!NOTE]
+> Compromissos enxutos, na estratégia de MVP universitário: poucos itens por etapa, para prometer só o que dá para entregar.
 
-#### [REPO] Formalizar o repositório
+**Etapa 04/06: MVP integrado e beta** (28/10/2026)
+_Fazer o sistema funcionar de ponta a ponta e testar com usuários reais._
+- [ ] Front-end (HiFi) implementado e uploaded. 
+- [ ] Formalizado do Back-end e populado com dados sinteticos realistas de Olinda.
+- [ ] Aplicação "publicada" disponivel para uso
 
-Organizar o repositório de forma profissional e trazer o código real do HiFi (front-end) entregue na Etapa 03.
+**Etapa 05/06: Ensaio e preparação para a banca** (11/11/2026)
+_Blindar a aplicação e preparar a apresentação._
+- [ ] a definir
+- [ ] Curva S do fluxo do usuário
+- [ ] Pipeline simples de testes de fluxo do sistema
 
-- [ ] README com visão geral, arquitetura, setup e entregas
-- [ ] Front-end do HiFi implementado e uploaded aqui no repositório
-- [ ] Higiene: renomear `serialyzers.py`, ignorar `db.sqlite3` no versionamento, `SECRET_KEY` em variável de ambiente
-
-#### [BD] Formalizar o banco de dados
-
-Consolidar o modelo de dados e migrar de SQLite para PostgreSQL (local ou hospedado no Supabase). Decidir entre manter o back-end Django apontando para o Postgres ou adotar o Supabase como banco. Etapa importante para validacao com todos do time. 
-
-- [ ] Modelo formalizado (`Usuario`, `Denuncia`, `Andamento`)
-- [ ] Campo `status` e fluxo de validação na denúncia
-- [ ] Migração de SQLite para PostgreSQL
-- [ ] Decisão Django vs Supabase registrada
-
-#### [QA] Validar os happy paths
-
-Garantir que os fluxos principais funcionam de ponta a ponta com persistência real, sem dados hardcoded.
-
-- [ ] Registrar denúncia (POST /api/denuncias)
-- [ ] Consultar denúncia por protocolo
-- [ ] Login da gestão e listagem no painel
-- [ ] Mudança de status pela gestão
-
-#### [DADOS] Gerar dados sintéticos de Olinda
-
-Popular o banco com denúncias realistas (categorias, bairros e cenários próximos à realidade de Olinda) para evitar telas vazias na banca.
-
-- [ ] Script de seed com dados sintéticos
-- [ ] Bairros e categorias reais de Olinda
-- [ ] Volume suficiente para demonstrar o painel
-
-#### [DOCS] Curva S do fluxo do usuário
-
-Produzir a curva S que mostra o fluxo da rotina do sistema para o usuário.
-
-- [ ] Definição do formato da curva S
-- [ ] Diagrama pronto e incorporado à documentação
-
-#### [DASH] Painel de indicadores (se der tempo)
-
-Dashboard simples para a gestão: denúncias por categoria, bairro, status e volume ao longo do tempo.
-
-- [ ] Indicadores principais levantados
-- [ ] Visualização para a gestão municipal
+**Etapa 06/06: Entrega final** (18/11/2026)
+_Ajustar e entregar à banca._
+- [ ] Ajustes finais a partir do feedback e do ensaio
+- [ ] Entrega do projeto à banca externa
 
 ---
 
