@@ -8,21 +8,25 @@
 ![DRF](https://img.shields.io/badge/DRF-3.14-A30000)
 ![licença](https://img.shields.io/badge/licen%C3%A7a-acad%C3%AAmica-lightgrey)
 
-Plataforma web colaborativa onde a população registra focos de risco (água parada, lixo acumulado, terrenos baldios, animais peçonhentos) com foto e localização. Os relatos viram dados organizados que orientam a fiscalização da vigilância em saúde e encurtam o tempo entre o surgimento de um foco e a resposta do poder público.
+---
+
+## Visão Geral
+
+O ContraVetores é uma plataforma web colaborativa onde a população de Olinda registra focos de risco (água parada, lixo acumulado, terrenos baldios, animais peçonhentos) com foto e localização. Os relatos viram dados organizados que orientam a fiscalização da vigilância em saúde e encurtam o tempo entre o surgimento de um foco e a resposta do poder público.
+
+Em uma frase: transformar a população em sensor da cidade, convertendo relato disperso em dado que prioriza a ação dos agentes de saúde.
 
 > [!NOTE]
 > Projeto acadêmico de inovação social da UNICAP, com patrocínio simulado da Secretaria de Saúde da Prefeitura de Olinda. É um MVP universitário: o escopo prioriza os requisitos que fazem sentido para o problema, não um produto pronto para produção.
 
-## Objetivos (Etapa 04)
+---
 
-- [x] Repositório organizado com README e estrutura clara
-- [ ] Banco de dados formalizado (migração de SQLite para PostgreSQL)
-- [ ] Fluxos principais (happy paths) validados com persistência real
-- [ ] Dados sintéticos baseados em cenários reais de Olinda
-- [ ] Integração do front-end (HiFi) ao repositório
-- [ ] Painel de indicadores para a gestão municipal
+## Arquitetura (provisória)
 
-## Arquitetura
+> [!NOTE]
+> A arquitetura abaixo é a levantada até o momento e pode evoluir ao longo do desenvolvimento.
+
+### Diagrama de arquitetura
 
 ```mermaid
 flowchart TD
@@ -35,7 +39,7 @@ flowchart TD
 
 O front-end apresenta o mapa, o formulário de denúncia e o painel. O back-end concentra as regras e a autenticação. Os dados e as consultas geográficas ficam no banco. Nenhuma camada acessa a outra pulando o back-end.
 
-## Stack
+### Stack
 
 | Camada | Tecnologia |
 | --- | --- |
@@ -46,7 +50,52 @@ O front-end apresenta o mapa, o formulário de denúncia e o painel. O back-end 
 | Upload de imagens | Pillow |
 | CORS | django-cors-headers |
 
-## Estrutura do repositório
+### Modelo de dados
+
+```mermaid
+erDiagram
+    USUARIO |o--o{ DENUNCIA : "registra"
+    USUARIO ||--o{ ANDAMENTO : "autor de"
+    DENUNCIA ||--o{ ANDAMENTO : "possui"
+    USUARIO {
+        uuid id PK
+        string nome
+        string email
+        string tipo
+        datetime criadoEm
+    }
+    DENUNCIA {
+        uuid id PK
+        string protocolo UK
+        string tipoFoco
+        string descricao
+        string fotoUrl
+        string localizacao
+        string endereco
+        string bairro
+        string status
+        bool anonima
+        datetime criadoEm
+        uuid denuncianteId FK
+    }
+    ANDAMENTO {
+        uuid id PK
+        string status
+        string observacao
+        datetime criadoEm
+        uuid denunciaId FK
+        uuid autorId FK
+    }
+```
+
+- **Usuario**: a gestão municipal e os agentes de saúde que validam as denúncias.
+- **Denuncia**: o foco reportado. O `protocolo` é público, para acompanhamento. Pode ser anônima (`anonima`), e nesse caso `denuncianteId` fica vazio (LGPD).
+- **Andamento**: o histórico de cada denúncia. Cada mudança de `status` registra quem fez, quando e uma observação. É o que sustenta o fluxo de validação (recebida, validada, rejeitada, resolvida).
+
+> [!NOTE]
+> Este é o modelo formalizado que norteia a Etapa 04. O código atual implementa uma versão reduzida (sem `status` e sem `Andamento`) e será migrado para este modelo.
+
+### Estrutura do repositório
 
 ```
 contravetores/        Configuração do projeto (settings, urls, wsgi, asgi)
@@ -61,54 +110,9 @@ manage.py
 requirements.txt
 ```
 
-## Modelo de dados
+---
 
-```mermaid
-erDiagram
-    USUARIO {
-        int id PK
-        string username
-        string tipo
-        string telefone
-    }
-    DENUNCIA {
-        uuid id PK
-        string protocolo UK
-        string titulo
-        string categoria
-        text descricao
-        string foto
-        string bairro
-        string endereco
-        bool declaracao_boa_fe
-        datetime criado_em
-    }
-```
-
-**Usuario** (estende o usuário padrão do Django): acesso da gestão municipal, com `tipo` e `telefone`.
-
-**Denuncia**: o foco reportado pela população. É anônima, sem vínculo com usuário. O `protocolo` é um código público gerado automaticamente, usado para acompanhar a denúncia.
-
-> [!NOTE]
-> O modelo acima é o estado atual. A ligação entre gestão e denúncia (fluxo de validação por `status`: recebida, validada, rejeitada, resolvida) está no roadmap e ainda não foi implementada.
-
-## API
-
-> [!IMPORTANT]
-> Estas são as rotas levantadas até o momento. A API está em construção e os contratos podem mudar conforme o projeto evolui.
-
-| Método | Rota | Acesso | Descrição |
-| --- | --- | --- | --- |
-| POST | `/api/denuncias` | Público | Registra uma denúncia |
-| GET | `/api/denuncias/{protocolo}` | Público | Consulta uma denúncia pelo protocolo |
-| GET | `/api/admin/denuncias` | Autenticado | Lista todas as denúncias para a gestão |
-| POST | `/auth/login` | Público | Autentica e devolve o token JWT |
-| POST | `/auth/refresh` | Público | Renova o token JWT |
-| — | `/admin/` | Autenticado | Painel administrativo do Django |
-
-As respostas são em JSON. As rotas autenticadas exigem o header `Authorization: Bearer <token>`.
-
-## Como rodar localmente
+## Setup
 
 ```bash
 git clone https://github.com/joaocarloss112/ContraVetores
@@ -128,21 +132,89 @@ A API fica em `http://localhost:8000`. O painel administrativo em `http://localh
 > [!TIP]
 > Use o `createsuperuser` para gerar o login da gestão e testar a rota `/api/admin/denuncias` com um token obtido em `/auth/login`.
 
-## Configuração para produção
+### Configuração para produção
 
 > [!WARNING]
 > O `settings.py` atual é de desenvolvimento: `SECRET_KEY` fixa no código, `DEBUG = True`, `ALLOWED_HOSTS = ['*']` e banco SQLite. Não use essa configuração em produção.
 
-Antes de publicar:
-- Mover `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis de ambiente.
-- Definir `DEBUG = False`.
-- Trocar o banco de SQLite para PostgreSQL (local ou hospedado no Supabase), via `DATABASE_URL`.
-- Servir os arquivos de mídia por um storage adequado.
+Antes de publicar: mover `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis de ambiente, definir `DEBUG = False`, trocar o banco para PostgreSQL (local ou Supabase) via `DATABASE_URL` e servir a mídia por um storage adequado.
+
+---
+
+## Entregas
+
+### Entregue
+
+**Etapa 01/06: Projeto de inovação social** (18/09/2026)
+- [x] Proposta ContraVetores, definição e atores de inovação social
+- [x] Análise SWOT, agentes de fomento e custo estimado
+- [x] Detalhamento do método e pitching
+
+**Etapa 02/06: Escolhas computacionais** (14/10/2026)
+- [x] Diagrama de arquitetura (front, back e dados)
+- [x] Modelagem de dados inicial e contratos de API
+- [x] Protótipo de alta fidelidade (HiFi)
+
+**Etapa 03/06: Mitigação de risco e validação ponta a ponta** (16/10/2026)
+- [x] Repositório Git com o core do back-end (Django REST)
+- [ ] Fluxo de denúncia com persistência real
+- [ ] Screencast do funcionamento do núcleo
+
+### Planejado: Etapa 04/06 (MVP universitário)
+
+> [!IMPORTANT]
+> Os blocos abaixo são os requisitos levantados pela equipe para a Etapa 04. Cada um está escrito para virar uma issue: título, descrição e critérios de aceite.
+
+#### [REPO] Formalizar o repositório
+
+Organizar o repositório de forma profissional e trazer o código real do HiFi (front-end) entregue na Etapa 03.
+
+- [ ] README com visão geral, arquitetura, setup e entregas
+- [ ] Front-end do HiFi implementado e uploaded aqui no repositório
+- [ ] Higiene: renomear `serialyzers.py`, ignorar `db.sqlite3` no versionamento, `SECRET_KEY` em variável de ambiente
+
+#### [BD] Formalizar o banco de dados
+
+Consolidar o modelo de dados e migrar de SQLite para PostgreSQL (local ou hospedado no Supabase). Decidir entre manter o back-end Django apontando para o Postgres ou adotar o Supabase como banco. Etapa importante para validacao com todos do time. 
+
+- [ ] Modelo formalizado (`Usuario`, `Denuncia`, `Andamento`)
+- [ ] Campo `status` e fluxo de validação na denúncia
+- [ ] Migração de SQLite para PostgreSQL
+- [ ] Decisão Django vs Supabase registrada
+
+#### [QA] Validar os happy paths
+
+Garantir que os fluxos principais funcionam de ponta a ponta com persistência real, sem dados hardcoded.
+
+- [ ] Registrar denúncia (POST /api/denuncias)
+- [ ] Consultar denúncia por protocolo
+- [ ] Login da gestão e listagem no painel
+- [ ] Mudança de status pela gestão
+
+#### [DADOS] Gerar dados sintéticos de Olinda
+
+Popular o banco com denúncias realistas (categorias, bairros e cenários próximos à realidade de Olinda) para evitar telas vazias na banca.
+
+- [ ] Script de seed com dados sintéticos
+- [ ] Bairros e categorias reais de Olinda
+- [ ] Volume suficiente para demonstrar o painel
+
+#### [DOCS] Curva S do fluxo do usuário
+
+Produzir a curva S que mostra o fluxo da rotina do sistema para o usuário.
+
+- [ ] Definição do formato da curva S
+- [ ] Diagrama pronto e incorporado à documentação
+
+#### [DASH] Painel de indicadores (se der tempo)
+
+Dashboard simples para a gestão: denúncias por categoria, bairro, status e volume ao longo do tempo.
+
+- [ ] Indicadores principais levantados
+- [ ] Visualização para a gestão municipal
+
+---
 
 ## Equipe
 
 Gabriel Martins, Rafael Sampaio, João Carlos, Marina Mendes, Lucas Sebastião e Henrique Rojas.
-
-## Status
-
-MVP universitário em desenvolvimento (Etapa 04). O desenvolvimento segue um método ágil iterativo, com entregas incrementais até dezembro de 2026.
