@@ -166,9 +166,9 @@ Antes de publicar: mover `SECRET_KEY`, `DEBUG` e `ALLOWED_HOSTS` para variáveis
 
 **Etapa 04/06: MVP integrado e beta** (28/10/2026)
 _Fazer o sistema funcionar de ponta a ponta e testar com usuários reais._
-- [ ] Front-end (HiFi) implementado e uploaded. 
-- [ ] Formalizado do Back-end e populado com dados sinteticos realistas de Olinda.
-- [ ] Aplicação "publicada" disponivel para uso
+- [ ] Desenvolvimento do Front-end (baseado no HiFi entregue).
+- [ ] Determinar a arquitetura Back-end. (Se der tempo, dados sintéticos, ex seed)
+- [ ] Aplicação "publicada" disponivel para uso a nivel de desenvolvimento.
 
 **Etapa 05/06: Ensaio e preparação para a banca** (11/11/2026)
 _Blindar a aplicação e preparar a apresentação._
