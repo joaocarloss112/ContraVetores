@@ -49,7 +49,7 @@ O site é uma **via de mão única**: o cidadão envia a denúncia e não há lo
 
 ### 1. Página inicial
 
-Explica o que pode ser denunciado, as três etapas do formulário e os cuidados antes de registrar. O botão **Registrar uma denúncia** abre o formulário. O link **Ver orientações de prevenção** mostra como reconhecer focos sem se expor a riscos.
+Explica o que pode ser denunciado, como funcionam as três etapas, o que ter em mãos e o que acontece depois. O botão **Registrar denúncia** abre o formulário (no celular ele fica fixo no rodapé ao rolar a página). O link **Ver orientações de prevenção** mostra como reconhecer focos sem se expor a riscos.
 
 <img src="docs/img/01-inicio.png" alt="Página inicial" width="640">
 
@@ -101,7 +101,7 @@ O front-end apresenta a landing, as orientações e o formulário de denúncia. 
 
 | Camada | Tecnologia |
 | --- | --- |
-| Front-end | React 19, React Router 7, Vite 6 |
+| Front-end | React 19, React Router 7, Vite 6, fonte Atkinson Hyperlegible |
 | Back-end | Python, Django 5.2, Django REST Framework |
 | Autenticação | JWT (djangorestframework-simplejwt) para as rotas da gestão |
 | Banco de dados | PostgreSQL via `DATABASE_URL` (Supabase em produção); SQLite como alternativa local |

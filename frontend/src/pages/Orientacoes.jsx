@@ -9,19 +9,22 @@ const ORIENTACOES = [
 
 export default function Orientacoes() {
   return (
-    <>
+    <div className="pagina">
+      <Link className="link-voltar" to="/">Voltar ao início</Link>
       <h1 className="titulo-pagina">Orientações de prevenção</h1>
       <p className="subtitulo-pagina">Como reconhecer possíveis focos sem se expor a riscos.</p>
-      <section className="grade-orientacoes">
+      <ul className="lista-orientacoes">
         {ORIENTACOES.map((item) => (
-          <article key={item.titulo} className="orientacao">
+          <li key={item.titulo}>
             <span className="orientacao-icone" aria-hidden="true">{item.icone}</span>
-            <h2>{item.titulo}</h2>
-            <p>{item.texto}</p>
-          </article>
+            <div>
+              <h2>{item.titulo}</h2>
+              <p>{item.texto}</p>
+            </div>
+          </li>
         ))}
-      </section>
-      <Link className="btn-principal escuro" to="/denunciar">Registrar uma denúncia</Link>
-    </>
+      </ul>
+      <Link className="botao-grande escuro" to="/denunciar">Registrar denúncia</Link>
+    </div>
   )
 }

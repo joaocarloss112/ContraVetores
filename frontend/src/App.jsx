@@ -19,14 +19,13 @@ export default function App() {
       <header className="topo">
         <Link to="/" className="marca-bloco">
           <span className="logo" aria-hidden="true">✳</span>
-          <div>
-            <div className="marca">Olinda contra os Vetores</div>
-            <div className="marca-sub">Central de denúncias • Olinda, PE</div>
-          </div>
+          <span>
+            <span className="marca">Olinda contra os Vetores</span>
+            <span className="marca-sub">Central de denúncias de Olinda, PE</span>
+          </span>
         </Link>
-        <span className="pill">Saúde ambiental em foco</span>
       </header>
-      <main className="conteudo">
+      <main>
         <Routes>
           <Route path="/" element={<Inicio />} />
           <Route path="/denunciar" element={<NovaDenuncia />} />
@@ -35,7 +34,8 @@ export default function App() {
         </Routes>
       </main>
       <footer className="rodape">
-        Central de Denúncias de Possíveis Focos de Vetores • Olinda, PE • MVP acadêmico, não é um canal oficial da Prefeitura
+        <p>Central de Denúncias de Possíveis Focos de Vetores de Olinda, PE.</p>
+        <p>MVP acadêmico da UNICAP. Não é um canal oficial da Prefeitura.</p>
       </footer>
     </BrowserRouter>
   )

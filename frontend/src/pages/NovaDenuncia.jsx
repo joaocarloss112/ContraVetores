@@ -150,12 +150,12 @@ export default function NovaDenuncia() {
 
   if (enviada) {
     return (
-      <section className="cartao centralizado">
+      <section className="pagina pagina-formulario confirmacao">
         <div className="selo-sucesso" aria-hidden="true">✓</div>
-        <p className="eyebrow escuro">Denúncia enviada</p>
-        <h1>Obrigado por ajudar Olinda</h1>
+        <h1>Denúncia enviada</h1>
         <p className="ajuda">
-          Sua denúncia foi registrada no ContraVetores e vai apoiar o trabalho da vigilância em saúde.
+          Obrigado por ajudar Olinda. Sua denúncia foi registrada e vai apoiar o trabalho da vigilância
+          em saúde.
         </p>
         <div className="aviso aviso-compacto">
           <strong>Sobre o retorno</strong>
@@ -164,38 +164,25 @@ export default function NovaDenuncia() {
             status ou resposta ao cidadão.
           </p>
         </div>
-        <Link className="btn-principal escuro" to="/">Voltar ao início</Link>
+        <Link className="botao-grande escuro" to="/">Voltar ao início</Link>
       </section>
     )
   }
 
   return (
-    <>
-      <Link className="link-voltar" to="/">← Voltar ao início</Link>
+    <div className="pagina pagina-formulario">
+      <Link className="link-voltar" to="/">Voltar ao início</Link>
       <h1 className="titulo-pagina">Registrar possível foco de vetores</h1>
       <p className="subtitulo-pagina">Preencha os dados abaixo. A foto é opcional.</p>
 
-      <ol className="passos" aria-label="Etapas do formulário">
-        {ETAPAS.map((nome, i) => {
-          let classe = 'passo'
-          if (i + 1 === etapa) {
-            classe = 'passo ativo'
-          } else if (i + 1 < etapa) {
-            classe = 'passo feito'
-          }
-          let atual
-          if (i + 1 === etapa) {
-            atual = 'step'
-          }
-          return (
-            <li key={nome} className={classe} aria-current={atual}>
-              {i + 1}. {nome}
-            </li>
-          )
-        })}
-      </ol>
+      <div className="progresso" aria-live="polite">
+        <p>Etapa {etapa} de 3: <strong>{ETAPAS[etapa - 1]}</strong></p>
+        <div className="progresso-trilho" aria-hidden="true">
+          <div className="progresso-barra" style={{ width: `${(etapa / 3) * 100}%` }} />
+        </div>
+      </div>
 
-      <section className="cartao">
+      <section className="formulario">
         <form onSubmit={enviar} noValidate>
           {etapa === 1 && (
             <>
@@ -324,12 +311,12 @@ export default function NovaDenuncia() {
             {etapa > 1 && (
               <button type="button" className="secundario" onClick={voltar}>Voltar</button>
             )}
-            {etapa < 3 && <button type="button" onClick={avancar}>Continuar →</button>}
+            {etapa < 3 && <button type="button" onClick={avancar}>Continuar</button>}
             {etapa === 3 && <BotaoEnviar enviando={enviando} />}
           </div>
         </form>
       </section>
-    </>
+    </div>
   )
 }
 
