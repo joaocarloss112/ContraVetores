@@ -1,4 +1,6 @@
 from denuncias.views import (
+    AdminAndamentoCriarView,
+    AdminDenunciaDetailView,
     AdminDenunciaListView,
     DenunciaCreateView,
     DenunciaDetailByProtocoloView,
@@ -28,6 +30,16 @@ urlpatterns = [
         'api/admin/denuncias',
         AdminDenunciaListView.as_view(),
         name='admin-listar-denuncias',
+    ),
+    path(
+        'api/admin/denuncias/<str:protocolo>',
+        AdminDenunciaDetailView.as_view(),
+        name='admin-detalhar-denuncia',
+    ),
+    path(
+        'api/admin/denuncias/<str:protocolo>/andamentos',
+        AdminAndamentoCriarView.as_view(),
+        name='admin-criar-andamento',
     ),
 ]
 
