@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from .models import Andamento, Denuncia
 
+FOTO_TAMANHO_MAXIMO = 10 * 1024 * 1024
+
 
 class AndamentoSerializer(serializers.ModelSerializer):
   autor = serializers.SerializerMethodField()
@@ -29,12 +31,21 @@ class DenunciaSerializer(serializers.ModelSerializer):
         'foto',
         'bairro',
         'endereco',
+        'ponto_referencia',
         'declaracao_boa_fe',
         'status',
         'criado_em',
         'andamentos',
     ]
     read_only_fields = ['protocolo', 'status', 'criado_em', 'andamentos']
+    extra_kwargs = {
+        'endereco': {'required': True, 'allow_blank': False, 'allow_null': False},
+    }
+
+  def validate_foto(self, value):
+    if value and value.size > FOTO_TAMANHO_MAXIMO:
+      raise serializers.ValidationError('A foto deve ter até 10 MB.')
+    return value
 
   def validate_declaracao_boa_fe(self, value):
     if not value:
