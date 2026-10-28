@@ -310,7 +310,8 @@ Variáveis definidas no terminal ou no painel da hospedagem têm prioridade sobr
 
 ### 1. Banco (Supabase)
 
-1. Crie um projeto no [Supabase](https://supabase.com). Região sugerida: South America (São Paulo). Guarde a senha do banco.
+1. Crie um projeto no [Supabase](https://supabase.com). Região: **East US (North Virginia)**, a mesma do Render no `render.yaml`, para a API e o banco ficarem perto. Guarde a senha do banco.
+   Em **Security**, desmarque **Enable Data API**: o Django acessa o banco direto, e com essa opção ligada as tabelas ficariam expostas pela API REST do Supabase.
 2. No topo do projeto, clique em **Connect** e copie a URI do **Session pooler** (ela funciona em redes só IPv4, como a do Render).
 3. Cole no `.env` como `DATABASE_URL`, trocando `[YOUR-PASSWORD]` pela senha. Se a senha tiver caracteres como `@`, `#` ou `/`, troque por uma só com letras e números.
 4. Rode `python dev.py --seed --so-preparar`. Isso cria as tabelas, o usuário da gestão e dados de exemplo no Supabase.
