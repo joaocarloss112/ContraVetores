@@ -2,6 +2,34 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 import uuid
 
+CATEGORIAS = [
+    'Água parada',
+    'Lixo e entulho',
+    'Terreno abandonado',
+    'Pneus e recipientes acumulando água',
+    'Esgoto ou água contaminada',
+    'Animais ou pragas associados a possíveis focos',
+    'Piscinas sem manutenção',
+    'Outro possível foco de vetores',
+]
+
+BAIRROS = [
+    'Peixinhos',
+    'Rio Doce',
+    'Casa Caiada',
+    'Bairro Novo',
+    'Sítio Novo',
+    'Ouro Preto',
+    'Jardim Atlântico',
+    'Águas Compridas',
+    'Amaro Branco',
+    'Varadouro',
+    'Carmo',
+    'Fragoso',
+    'Tabajara',
+    'Outro bairro de Olinda',
+]
+
 
 class Usuario(AbstractUser):
   class TipoUsuario(models.TextChoices):
@@ -23,11 +51,14 @@ class Denuncia(models.Model):
   id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
   protocolo = models.CharField(max_length=20, unique=True, blank=True)
   titulo = models.CharField(max_length=150)
-  categoria = models.CharField(max_length=100)
+  categoria = models.CharField(
+      max_length=100, choices=[(c, c) for c in CATEGORIAS]
+  )
   descricao = models.TextField()
   foto = models.ImageField(upload_to='denuncias/', blank=True, null=True)
-  bairro = models.CharField(max_length=100, default='Olinda')
+  bairro = models.CharField(max_length=100, choices=[(b, b) for b in BAIRROS])
   endereco = models.CharField(max_length=255, blank=True, null=True)
+  ponto_referencia = models.CharField(max_length=255, blank=True, default='')
   declaracao_boa_fe = models.BooleanField(default=False)
   status = models.CharField(
       max_length=20, choices=Status.choices, default=Status.RECEBIDA

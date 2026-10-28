@@ -1,67 +1,122 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-const ITENS = [
-  'Água parada em recipientes ou áreas abertas',
+const PASSOS = [
+  { titulo: 'O que você viu', texto: 'Dê um título, escolha o tipo de foco e descreva a situação. Se tiver uma foto, pode anexar.' },
+  { titulo: 'Onde fica', texto: 'Escolha o bairro e informe o endereço ou um ponto de referência, como uma praça ou escola.' },
+  { titulo: 'Revise e envie', texto: 'Confira o resumo, confirme que as informações são verdadeiras e envie.' },
+]
+
+const FOCOS = [
+  'Água parada em recipientes, calhas, lonas ou caixas d’água abertas',
   'Pneus, entulho e lixo acumulado',
-  'Terrenos abandonados e piscinas sem manutenção',
-  'Esgoto, água contaminada ou outros possíveis focos',
+  'Terrenos e imóveis abandonados',
+  'Obras paradas que acumulam água',
+  'Piscinas sem manutenção',
+  'Esgoto a céu aberto ou água contaminada',
 ]
 
 export default function Inicio() {
+  const botaoTopo = useRef(null)
+  const [mostrarBarra, setMostrarBarra] = useState(false)
+
+  useEffect(() => {
+    const alvo = botaoTopo.current
+    if (!alvo || !('IntersectionObserver' in window)) {
+      return undefined
+    }
+    const observador = new IntersectionObserver(([entrada]) => {
+      setMostrarBarra(!entrada.isIntersecting)
+    })
+    observador.observe(alvo)
+    return () => observador.disconnect()
+  }, [])
+
+  let classeBarra = 'barra-fixa'
+  let tabBarra = -1
+  if (mostrarBarra) {
+    classeBarra = 'barra-fixa visivel'
+    tabBarra = 0
+  }
+
   return (
     <>
-      <section className="hero">
-        <div className="hero-texto">
-          <p className="eyebrow">Olinda • Pernambuco</p>
-          <h1>Ajude a identificar possíveis focos de vetores na cidade.</h1>
-          <p className="apoio">
-            Comunique locais com água parada, lixo acumulado ou outras situações que possam
-            favorecer a proliferação de mosquitos e outros vetores.
+      <section className="abertura">
+        <div className="abertura-conteudo">
+          <h1>Viu um possível foco de mosquito? Avise a vigilância em saúde de Olinda.</h1>
+          <p className="abertura-apoio">
+            Água parada, lixo acumulado e terrenos abandonados favorecem a dengue, a zika e a
+            chikungunya. Sua denúncia ajuda as equipes a chegar mais rápido.
           </p>
-          <Link className="btn-principal" to="/denunciar">+ Registrar uma denúncia</Link>
-          <p className="aviso-escopo">
-            Via de mão única: o cidadão envia a denúncia. Esta plataforma não oferece
-            acompanhamento nem resposta.
-          </p>
-        </div>
-        <aside className="card-vidro">
-          <div className="icone-card" aria-hidden="true">🦟</div>
-          <h2>O que pode ser denunciado?</h2>
-          <ul>
-            {ITENS.map((item) => <li key={item}><span aria-hidden="true">✓</span> {item}</li>)}
+          <Link ref={botaoTopo} className="botao-grande" to="/denunciar">Registrar denúncia</Link>
+          <ul className="garantias">
+            <li>Leva cerca de 2 minutos</li>
+            <li>Sem cadastro e sem login</li>
+            <li>Foto opcional</li>
           </ul>
-        </aside>
+        </div>
       </section>
 
-      <section className="etapas">
-        <Etapa numero="01" titulo="Descreva a situação" texto="Explique o que observou e escolha a categoria que melhor representa o possível foco." />
-        <Etapa numero="02" titulo="Informe o local" texto="Indique o bairro e o endereço ou ponto de referência para ajudar a localizar o local." />
-        <Etapa numero="03" titulo="Envie a denúncia" texto="Você pode anexar uma foto, mas ela é opcional. Revise as informações antes de enviar." />
-      </section>
+      <div className="pagina">
+        <section className="bloco">
+          <h2>Como funciona</h2>
+          <ol className="linha-do-tempo">
+            {PASSOS.map((passo) => (
+              <li key={passo.titulo}>
+                <h3>{passo.titulo}</h3>
+                <p>{passo.texto}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-      <section className="cartao">
-        <h2>Antes de registrar</h2>
-        <ul className="lista-cuidados">
-          <li>Informe situações observadas ou suspeitas de boa-fé.</li>
-          <li>Não entre em terrenos nem se aproxime de áreas perigosas para fotografar.</li>
-          <li>Evite incluir rostos, placas ou outros dados pessoais na foto.</li>
-        </ul>
-        <h2>Importante sobre o funcionamento</h2>
-        <p className="ajuda">
-          Não há consulta de protocolo, atualização de status, retorno ao cidadão ou mapa público de
-          denúncias. Este protótipo ainda não transmite dados à Prefeitura.
-        </p>
-      </section>
+        <section className="bloco">
+          <h2>O que dá para denunciar</h2>
+          <ul className="lista-focos">
+            {FOCOS.map((foco) => <li key={foco}>{foco}</li>)}
+          </ul>
+        </section>
+
+        <section className="bloco">
+          <h2>Antes de começar</h2>
+          <div className="colunas">
+            <div>
+              <h3>Tenha em mãos</h3>
+              <ul className="lista-simples">
+                <li>O endereço ou um ponto de referência perto do local</li>
+                <li>Uma foto, se der para tirar sem se arriscar</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Cuide da sua segurança</h3>
+              <ul className="lista-simples">
+                <li>Não entre em terrenos nem toque em resíduos</li>
+                <li>Evite rostos e placas de veículos na foto</li>
+                <li>Informe só o que viu ou suspeita, de boa-fé</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="bloco depois">
+          <h2>O que acontece depois</h2>
+          <p>
+            A denúncia fica registrada para a equipe de vigilância em saúde. Este canal é de mão única:
+            não há protocolo, consulta de andamento nem resposta ao cidadão. Este MVP acadêmico ainda
+            não é integrado à Prefeitura.
+          </p>
+        </section>
+
+        <section className="bloco prevencao">
+          <h2>Também vale olhar a sua casa</h2>
+          <p>Vasos de planta, calhas e caixas d’água destampadas também viram criadouros.</p>
+          <Link to="/orientacoes">Ver orientações de prevenção</Link>
+        </section>
+      </div>
+
+      <div className={classeBarra} aria-hidden={!mostrarBarra}>
+        <Link className="botao-grande" to="/denunciar" tabIndex={tabBarra}>Registrar denúncia</Link>
+      </div>
     </>
-  )
-}
-
-function Etapa({ numero, titulo, texto }) {
-  return (
-    <article className="etapa">
-      <span className="etapa-num">{numero} / ETAPA</span>
-      <h3>{titulo}</h3>
-      <p>{texto}</p>
-    </article>
   )
 }
