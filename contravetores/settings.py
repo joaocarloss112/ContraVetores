@@ -1,13 +1,32 @@
 import os
 from pathlib import Path
 
+import dj_database_url
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = '**'
 
-DEBUG = True
+def env_bool(nome, padrao):
+  valor = os.environ.get(nome)
+  if valor is None:
+    return padrao
+  return valor.strip().lower() in ('1', 'true', 'yes', 'sim')
 
-ALLOWED_HOSTS = ['*']
+
+def env_lista(nome, padrao=''):
+  valor = os.environ.get(nome, padrao)
+  return [item.strip() for item in valor.split(',') if item.strip()]
+
+
+DEBUG = env_bool('DEBUG', True)
+
+SECRET_KEY = os.environ.get('SECRET_KEY', '')
+if not SECRET_KEY:
+  if not DEBUG:
+    raise RuntimeError('Defina SECRET_KEY nas variáveis de ambiente.')
+  SECRET_KEY = 'dev-inseguro-apenas-para-uso-local-0000'
+
+ALLOWED_HOSTS = env_lista('ALLOWED_HOSTS', '*')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -53,10 +72,10 @@ WSGI_APPLICATION = 'contravetores.wsgi.application'
 
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600,
+    )
 }
 
 
@@ -86,8 +105,23 @@ USE_TZ = True
 
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+if not DEBUG:
+  MIDDLEWARE.insert(2, 'whitenoise.middleware.WhiteNoiseMiddleware')
+  STORAGES = {
+      'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+      'staticfiles': {
+          'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+      },
+  }
+
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', BASE_DIR / 'media')
+SERVE_MEDIA = env_bool('SERVE_MEDIA', DEBUG)
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 11 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 11 * 1024 * 1024
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -96,7 +130,14 @@ REST_FRAMEWORK = {
 }
 
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = env_lista('CORS_ALLOWED_ORIGINS')
+CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
+CSRF_TRUSTED_ORIGINS = env_lista('CSRF_TRUSTED_ORIGINS')
+
+if not DEBUG:
+  SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+  SESSION_COOKIE_SECURE = True
+  CSRF_COOKIE_SECURE = True
 
 AUTH_USER_MODEL = 'denuncias.Usuario'
 
