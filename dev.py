@@ -127,7 +127,8 @@ def subir_servidores(python, npm, com_front):
   processos.append(iniciar([python, 'manage.py', 'runserver', '127.0.0.1:8000'], RAIZ))
   if com_front:
     etapa('Subindo o site em http://127.0.0.1:5173')
-    processos.append(iniciar([npm, 'run', 'dev'], FRONT))
+    vite = FRONT / 'node_modules' / 'vite' / 'bin' / 'vite.js'
+    processos.append(iniciar([shutil.which('node'), vite, '--host', '127.0.0.1', '--port', '5173'], FRONT))
   print('\nTudo no ar. Ctrl+C para parar.\n', flush=True)
 
   try:
