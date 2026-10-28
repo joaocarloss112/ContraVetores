@@ -169,7 +169,8 @@ frontend/             App React (Vite)
   vercel.json         Rotas do React Router no Vercel
 docs/                 Documentos entregues e imagens do README
 render.yaml           Deploy da API no Render
-.env.example          Variáveis de ambiente
+dev.py                Prepara e sobe o ambiente de desenvolvimento
+.env.example          Modelo do arquivo .env
 ```
 
 ---
@@ -227,25 +228,44 @@ Erros de validação voltam com `400` e a mensagem por campo, por exemplo `{"end
 
 Pré-requisitos: Python 3.12+ e Node.js 20+.
 
-### Back-end
+### Jeito rápido: `dev.py`
 
 ```bash
 git clone https://github.com/joaocarloss112/ContraVetores
 cd ContraVetores
+python dev.py
+```
 
+O script faz tudo sozinho e sobe os dois servidores no mesmo terminal:
+
+1. Cria o `venv` (se não existir) e instala o `requirements.txt` (só quando ele muda)
+2. Aplica as migrações no banco
+3. Pede para criar o usuário da gestão, se ainda não houver nenhum
+4. Instala as dependências do front (só quando o `package-lock.json` muda)
+5. Sobe a API em `http://127.0.0.1:8000` e o site em `http://127.0.0.1:5173`
+
+`Ctrl+C` para os dois. Opções:
+
+| Comando | O que faz |
+| --- | --- |
+| `python dev.py --seed` | Gera 20 denúncias fictícias antes de subir |
+| `python dev.py --so-api` | Sobe só o back-end |
+| `python dev.py --so-preparar` | Instala e migra, sem subir servidores |
+
+### Passo a passo manual
+
+<details>
+<summary>Mesmos passos do <code>dev.py</code>, comando por comando</summary>
+
+```bash
 python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
-
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser  # login da gestão no /admin
 python manage.py seed_denuncias   # opcional: 20 denúncias fictícias
 python manage.py runserver
 ```
-
-A API sobe em `http://localhost:8000` e o painel em `http://localhost:8000/admin/`.
-
-### Front-end
 
 Em outro terminal:
 
@@ -255,20 +275,23 @@ npm install
 npm run dev
 ```
 
-O site abre em `http://127.0.0.1:5173`. Em desenvolvimento, o Vite encaminha `/api`, `/auth` e `/media` para o Django, então não é preciso configurar nada.
+</details>
+
+Em desenvolvimento, o Vite encaminha `/api`, `/auth` e `/media` para o Django, então o front não precisa de configuração.
 
 ---
 
 ## Banco de dados
 
-O Django lê a conexão da variável `DATABASE_URL`. Sem ela, usa um arquivo `db.sqlite3` local (que não é versionado).
+O Django lê as configurações de um arquivo `.env` na raiz do projeto (que não é versionado). Sem `DATABASE_URL`, usa um `db.sqlite3` local.
 
-Para usar PostgreSQL, crie um `.env` a partir do `.env.example` ou exporte a variável antes dos comandos:
+Para usar o PostgreSQL do Supabase:
 
-```bash
-export DATABASE_URL="postgresql://usuario:senha@host:5432/postgres"   # Windows: set DATABASE_URL=...
-python manage.py migrate
-```
+1. Copie o `.env.example` para `.env`.
+2. Descomente a linha `DATABASE_URL` e cole a string de conexão (veja [Deploy > Banco](#1-banco-supabase)).
+3. Rode `python dev.py`. As migrações vão para o Supabase.
+
+Variáveis definidas no terminal ou no painel da hospedagem têm prioridade sobre o `.env`.
 
 | Variável | Para que serve | Padrão |
 | --- | --- | --- |
@@ -281,25 +304,17 @@ python manage.py migrate
 | `SERVE_MEDIA` | Django serve as fotos enviadas | igual ao `DEBUG` |
 | `VITE_API_URL` | (front) URL da API no build do Vercel | mesma origem |
 
-> [!NOTE]
-> O `.env` não é lido automaticamente pelo Django: exporte as variáveis no terminal ou cadastre no painel da hospedagem.
-
 ---
 
 ## Deploy
 
 ### 1. Banco (Supabase)
 
-1. Crie um projeto no [Supabase](https://supabase.com).
-2. Em **Connect**, copie a string do **Session pooler** (funciona em redes só IPv4, como a do Render).
-3. Rode as migrações e crie o usuário da gestão apontando para esse banco, do seu computador:
-
-```bash
-export DATABASE_URL="postgresql://postgres.<ref>:<senha>@aws-0-<regiao>.pooler.supabase.com:5432/postgres"
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py seed_denuncias   # opcional
-```
+1. Crie um projeto no [Supabase](https://supabase.com). Região sugerida: South America (São Paulo). Guarde a senha do banco.
+2. No topo do projeto, clique em **Connect** e copie a URI do **Session pooler** (ela funciona em redes só IPv4, como a do Render).
+3. Cole no `.env` como `DATABASE_URL`, trocando `[YOUR-PASSWORD]` pela senha. Se a senha tiver caracteres como `@`, `#` ou `/`, troque por uma só com letras e números.
+4. Rode `python dev.py --seed --so-preparar`. Isso cria as tabelas, o usuário da gestão e dados de exemplo no Supabase.
+5. Confira em **Table Editor**: devem aparecer as tabelas `denuncias_denuncia`, `denuncias_andamento` e `denuncias_usuario`.
 
 ### 2. API (Render)
 
