@@ -40,18 +40,24 @@ export default function Inicio() {
       </section>
 
       <section className="cartao">
-        <h2>Antes de registrar</h2>
+        <h2 className="sem-margem">Antes de registrar</h2>
         <ul className="lista-cuidados">
           <li>Informe situações observadas ou suspeitas de boa-fé.</li>
           <li>Não entre em terrenos nem se aproxime de áreas perigosas para fotografar.</li>
           <li>Evite incluir rostos, placas ou outros dados pessoais na foto.</li>
         </ul>
+      </section>
+
+      <section className="aviso">
         <h2>Importante sobre o funcionamento</h2>
-        <p className="ajuda">
+        <p>
           Não há consulta de protocolo, atualização de status, retorno ao cidadão ou mapa público de
-          denúncias. Este protótipo ainda não transmite dados à Prefeitura.
+          denúncias. As denúncias ficam registradas no ContraVetores, mas este MVP acadêmico ainda não
+          é integrado à Prefeitura.
         </p>
       </section>
+
+      <Link className="link-orientacoes" to="/orientacoes">Ver orientações de prevenção</Link>
     </>
   )
 }
