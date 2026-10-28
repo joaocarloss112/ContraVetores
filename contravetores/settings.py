@@ -27,6 +27,9 @@ if not SECRET_KEY:
   SECRET_KEY = 'dev-inseguro-apenas-para-uso-local-0000'
 
 ALLOWED_HOSTS = env_lista('ALLOWED_HOSTS', '*')
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+  ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
