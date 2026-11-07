@@ -4,19 +4,18 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from denuncias.models import Andamento, Denuncia
+from denuncias.models import BAIRROS, Andamento, Denuncia
 
-CATEGORIAS = {
-    'Água parada': ['Pneu com água acumulada', 'Caixa d\'água destampada', 'Poça após chuva'],
-    'Lixo acumulado': ['Entulho em terreno', 'Sacos de lixo na calçada', 'Lixo próximo a canal'],
-    'Terreno baldio': ['Mato alto e água empoçada', 'Lote abandonado com lixo', 'Terreno sem muro'],
-    'Animais peçonhentos': ['Escorpiões em muro', 'Formigueiro em área de convivência', 'Aranhas em depósito'],
+TITULOS = {
+    'Água parada': ['Caixa d\'água destampada', 'Poça após chuva', 'Calha entupida com água'],
+    'Lixo e entulho': ['Entulho em terreno', 'Sacos de lixo na calçada', 'Lixo próximo a canal'],
+    'Terreno abandonado': ['Mato alto e água empoçada', 'Lote abandonado com lixo', 'Terreno sem muro'],
+    'Pneus e recipientes acumulando água': ['Pneus com água acumulada', 'Garrafas e baldes no quintal'],
+    'Esgoto ou água contaminada': ['Esgoto a céu aberto', 'Canal com água parada'],
+    'Animais ou pragas associados a possíveis focos': ['Ratos perto de lixo acumulado', 'Escorpiões em muro'],
+    'Piscinas sem manutenção': ['Piscina abandonada com água verde', 'Piscina de casa fechada'],
+    'Outro possível foco de vetores': ['Vaso de planta com água', 'Lona acumulando água'],
 }
-
-BAIRROS = [
-    'Carmo', 'Bonsucesso', 'Casa Caiada', 'Varadouro',
-    'Ouro Preto', 'Peixinhos', 'Rio Doce', 'Jatobá',
-]
 
 DESCRICOES = [
     'Foco identificado durante a caminhada da manhã. Precisa de vistoria.',
@@ -58,16 +57,16 @@ class Command(BaseCommand):
 
     rnd = random.Random(options['seed'])
     agora = timezone.now()
-    categorias = list(CATEGORIAS)
+    categorias = list(TITULOS)
 
     for _ in range(options['quantidade']):
       categoria = rnd.choice(categorias)
-      titulo = rnd.choice(CATEGORIAS[categoria])
+      titulo = rnd.choice(TITULOS[categoria])
       denuncia = Denuncia.objects.create(
           titulo=titulo,
           categoria=categoria,
           descricao=rnd.choice(DESCRICOES),
-          bairro=rnd.choice(BAIRROS),
+          bairro=rnd.choice(BAIRROS[:-1]),
           endereco=f'Rua {rnd.randint(1, 60)}, nº {rnd.randint(1, 900)}',
           declaracao_boa_fe=True,
       )

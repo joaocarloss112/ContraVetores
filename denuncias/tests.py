@@ -13,10 +13,11 @@ from rest_framework.test import APIClient
 from .models import Andamento, Denuncia
 
 
-def imagem_de_teste():
+def imagem_de_teste(bytes_extras=0):
   buffer = BytesIO()
   Image.new('RGB', (4, 4), color=(0, 128, 0)).save(buffer, format='PNG')
-  return SimpleUploadedFile('foco.png', buffer.getvalue(), content_type='image/png')
+  conteudo = buffer.getvalue() + b'\0' * bytes_extras
+  return SimpleUploadedFile('foco.png', conteudo, content_type='image/png')
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix='contravetores-test-media-'))
@@ -35,6 +36,7 @@ class DenunciaApiTests(TestCase):
         'descricao': 'Caixa aberta no quintal.',
         'bairro': 'Carmo',
         'endereco': 'Rua do Sol, 10',
+        'ponto_referencia': 'Em frente à escola',
         'declaracao_boa_fe': True,
     }
     self.gestor = get_user_model().objects.create_user(
@@ -50,6 +52,39 @@ class DenunciaApiTests(TestCase):
     self.assertEqual(resp.data['status'], Denuncia.Status.RECEBIDA)
     self.assertEqual(len(resp.data['protocolo']), 8)
     self.assertTrue(resp.data['foto'])
+
+  def test_criar_denuncia_sem_foto_guarda_ponto_de_referencia(self):
+    resp = self.client.post(reverse('criar-denuncia'), self.payload, format='json')
+    self.assertEqual(resp.status_code, 201, resp.data)
+    self.assertIsNone(resp.data['foto'])
+    denuncia = Denuncia.objects.get(protocolo=resp.data['protocolo'])
+    self.assertEqual(denuncia.ponto_referencia, 'Em frente à escola')
+
+  def test_criar_denuncia_sem_endereco_e_recusada(self):
+    payload = {**self.payload}
+    del payload['endereco']
+    resp = self.client.post(reverse('criar-denuncia'), payload, format='json')
+    self.assertEqual(resp.status_code, 400)
+    self.assertIn('endereco', resp.data)
+
+  def test_categoria_e_bairro_fora_da_lista_sao_recusados(self):
+    resp = self.client.post(
+        reverse('criar-denuncia'),
+        {**self.payload, 'categoria': 'Inventada', 'bairro': 'Boa Viagem'},
+        format='json',
+    )
+    self.assertEqual(resp.status_code, 400)
+    self.assertIn('categoria', resp.data)
+    self.assertIn('bairro', resp.data)
+
+  def test_foto_acima_de_10_mb_e_recusada(self):
+    foto = imagem_de_teste(bytes_extras=10 * 1024 * 1024)
+    resp = self.client.post(
+        reverse('criar-denuncia'), {**self.payload, 'foto': foto}, format='multipart'
+    )
+    self.assertEqual(resp.status_code, 400)
+    self.assertEqual(resp.data['foto'], ['A foto deve ter até 10 MB.'])
+    self.assertFalse(Denuncia.objects.exists())
 
   def test_criar_denuncia_sem_boa_fe_e_recusada(self):
     resp = self.client.post(
