@@ -1,24 +1,38 @@
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status as http_status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from .models import Andamento, Denuncia
 from .serialyzers import (
     AndamentoCriarSerializer,
-    AndamentoSerializer,
+    DenunciaPublicaSerializer,
     DenunciaSerializer,
 )
 
 
 class DenunciaCreateView(generics.CreateAPIView):
   queryset = Denuncia.objects.all()
-  serializer_class = DenunciaSerializer
+  serializer_class = DenunciaPublicaSerializer
   permission_classes = [permissions.AllowAny]
+  authentication_classes = []
+  throttle_classes = [ScopedRateThrottle]
+  throttle_scope = 'denuncias'
+
+  def perform_create(self, serializer):
+    with transaction.atomic():
+      denuncia = serializer.save()
+      Andamento.objects.create(
+          denuncia=denuncia,
+          status=Denuncia.Status.RECEBIDA,
+          observacao='Denúncia recebida pela central.',
+      )
 
 
 class DenunciaDetailByProtocoloView(generics.RetrieveAPIView):
-  queryset = Denuncia.objects.prefetch_related('andamentos__autor')
-  serializer_class = DenunciaSerializer
+  queryset = Denuncia.objects.prefetch_related('andamentos')
+  serializer_class = DenunciaPublicaSerializer
   lookup_field = 'protocolo'
   permission_classes = [permissions.AllowAny]
 

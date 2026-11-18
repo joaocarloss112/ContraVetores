@@ -67,8 +67,15 @@ class Denuncia(models.Model):
 
   def save(self, *args, **kwargs):
     if not self.protocolo:
-      self.protocolo = str(uuid.uuid4()).upper()[:8]
+      self.protocolo = self.gerar_protocolo()
     super().save(*args, **kwargs)
+
+  @classmethod
+  def gerar_protocolo(cls):
+    while True:
+      protocolo = uuid.uuid4().hex.upper()[:8]
+      if not cls.objects.filter(protocolo=protocolo).exists():
+        return protocolo
 
   def __str__(self):
     return f'[{self.protocolo}] {self.titulo} - {self.bairro}'

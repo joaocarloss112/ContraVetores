@@ -23,6 +23,7 @@ class DenunciaAdmin(admin.ModelAdmin):
   ]
   search_fields = ['protocolo', 'titulo', 'endereco','bairro']
   list_filter = ['status', 'categoria', 'bairro', 'declaracao_boa_fe']
+  readonly_fields = ['protocolo', 'status', 'criado_em']
   inlines = [AndamentoInline]
 
   def save_formset(self, request, form, formset, change):
