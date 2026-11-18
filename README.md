@@ -55,13 +55,16 @@ Explica o que pode ser denunciado, como funcionam as três etapas, o que ter em 
 
 ### 2. Etapa 1: O que você viu
 
-Informe um **título**, escolha a **categoria** do possível foco e **descreva** o que observou. A **foto é opcional** (até 10 MB) e pode ser removida antes de continuar.
+Informe um **título**, escolha a **categoria** do possível foco e **descreva** o que observou. A **foto é opcional**: dá para **tirar na hora** (abre a câmera traseira) ou escolher **da galeria**. Ela é reduzida no próprio aparelho antes do envio, para gastar menos internet.
 
 <img src="docs/img/03-etapa1.png" alt="Etapa 1 do formulário" width="640">
 
 ### 3. Etapa 2: Onde fica
 
-Escolha o **bairro de Olinda**, informe o **endereço ou localização aproximada** e, se quiser, um **ponto de referência**.
+Toque em **Usar minha localização** para o GPS preencher o endereço e o bairro (o endereço vem do OpenStreetMap). Confira o **bairro de Olinda**, o **endereço** e, se quiser, informe um **ponto de referência**.
+
+> [!NOTE]
+> O navegador só libera o GPS em `localhost` ou HTTPS. Testando pelo celular via `http://192.168.x.x`, o botão não aparece e o endereço é digitado normalmente.
 
 <img src="docs/img/04-etapa2.png" alt="Etapa 2 do formulário" width="640">
 
@@ -109,7 +112,7 @@ O front-end apresenta a landing, as orientações e o formulário de denúncia. 
 | Servidor | gunicorn + WhiteNoise |
 | Hospedagem | Vercel (front) e Render (API) |
 
-Em relação ao documento da Etapa 02, o mapa com Leaflet, o PostGIS e o dashboard em Power BI ficaram fora do MVP. A localização é informada por bairro, endereço e ponto de referência, como no HiFi.
+Em relação ao documento da Etapa 02, o mapa com Leaflet, o PostGIS e o dashboard em Power BI ficaram fora do MVP. A localização é informada por bairro, endereço e ponto de referência, como no HiFi, e opcionalmente pelas coordenadas do GPS. No `/admin`, cada denúncia com coordenadas tem um link **Ver no mapa**.
 
 ### Modelo de dados
 
@@ -134,6 +137,8 @@ erDiagram
         string bairro
         string endereco
         string ponto_referencia
+        decimal latitude
+        decimal longitude
         bool declaracao_boa_fe
         string status
         datetime criado_em
@@ -197,6 +202,8 @@ curl -X POST http://localhost:8000/api/denuncias \
   -F bairro="Varadouro" \
   -F endereco="Rua do Sol, 100" \
   -F ponto_referencia="Em frente à escola" \
+  -F latitude=-8.013679 \
+  -F longitude=-34.849123 \
   -F declaracao_boa_fe=true \
   -F foto=@foto.jpg
 ```
@@ -213,6 +220,8 @@ Resposta `201`:
   "bairro": "Varadouro",
   "endereco": "Rua do Sol, 100",
   "ponto_referencia": "Em frente à escola",
+  "latitude": "-8.013679",
+  "longitude": "-34.849123",
   "declaracao_boa_fe": true,
   "status": "RECEBIDA",
   "criado_em": "2026-10-28T18:04:16.112718-03:00",

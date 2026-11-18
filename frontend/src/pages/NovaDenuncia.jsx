@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, BAIRROS, CATEGORIAS, FOTO_TAMANHO_MAXIMO } from '../api.js'
+import { comprimirFoto, formatarTamanho } from '../foto.js'
+import { buscarEndereco, localizacaoDisponivel, obterPosicao } from '../localizacao.js'
 
 const ETAPAS = ['O que você viu', 'Onde fica', 'Revisar e enviar']
 
@@ -63,6 +65,8 @@ export default function NovaDenuncia() {
   const [erros, setErros] = useState({})
   const [enviando, setEnviando] = useState(false)
   const [enviada, setEnviada] = useState(false)
+  const [preparandoFoto, setPreparandoFoto] = useState(false)
+  const [gps, setGps] = useState({ estado: 'inicial' })
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -89,14 +93,54 @@ export default function NovaDenuncia() {
     setErros((atual) => ({ ...atual, [name]: undefined }))
   }
 
-  function escolherFoto(e) {
-    const arquivo = e.target.files[0] || null
+  async function escolherFoto(e) {
+    const original = e.target.files[0] || null
+    e.target.value = ''
+    if (!original) {
+      return
+    }
+    setPreparandoFoto(true)
+    const arquivo = await comprimirFoto(original)
+    setPreparandoFoto(false)
     setFoto(arquivo)
-    if (arquivo && arquivo.size > FOTO_TAMANHO_MAXIMO) {
+    if (arquivo.size > FOTO_TAMANHO_MAXIMO) {
       setErros((atual) => ({ ...atual, foto: ['A foto deve ter até 10 MB.'] }))
     } else {
       setErros((atual) => ({ ...atual, foto: undefined }))
     }
+  }
+
+  async function usarLocalizacao() {
+    setGps({ estado: 'buscando' })
+    let posicao
+    try {
+      posicao = await obterPosicao()
+    } catch (erro) {
+      setGps({ estado: 'erro', mensagem: erro.message })
+      return
+    }
+    setGps({ estado: 'ok', ...posicao })
+    const achado = await buscarEndereco(posicao.latitude, posicao.longitude)
+    if (!achado) {
+      return
+    }
+    setCampos((atual) => {
+      const novos = { ...atual }
+      if (!atual.endereco.trim() && achado.endereco) {
+        novos.endereco = achado.endereco
+      }
+      if (achado.bairro) {
+        novos.bairro = achado.bairro
+      }
+      return novos
+    })
+    if (achado.endereco) {
+      setErros((atual) => ({ ...atual, endereco: undefined }))
+    }
+  }
+
+  function removerLocalizacao() {
+    setGps({ estado: 'inicial' })
   }
 
   function removerFoto() {
@@ -129,6 +173,10 @@ export default function NovaDenuncia() {
     Object.entries(campos).forEach(([chave, valor]) => form.append(chave, valor))
     if (foto) {
       form.append('foto', foto)
+    }
+    if (gps.estado === 'ok') {
+      form.append('latitude', gps.latitude)
+      form.append('longitude', gps.longitude)
     }
     try {
       await api.criarDenuncia(form)
@@ -217,13 +265,22 @@ export default function NovaDenuncia() {
               </label>
               <div className="campo-foto">
                 <span className="rotulo">Foto do local (opcional)</span>
-                <span className="dica">Imagem de até 10 MB.</span>
-                <label className="area-upload">
-                  <input type="file" accept="image/*" onChange={escolherFoto} />
-                </label>
-                {previa && (
+                <span className="dica">A foto é reduzida no seu aparelho antes do envio, para gastar menos internet.</span>
+                <div className="botoes-foto">
+                  <label className="botao-arquivo">
+                    <input type="file" accept="image/*" capture="environment" onChange={escolherFoto} />
+                    Tirar foto
+                  </label>
+                  <label className="botao-arquivo secundario">
+                    <input type="file" accept="image/*" onChange={escolherFoto} />
+                    Da galeria
+                  </label>
+                </div>
+                {preparandoFoto && <span className="dica" aria-live="polite">Preparando a foto…</span>}
+                {previa && foto && (
                   <div className="previa">
                     <img src={previa} alt="Prévia da foto escolhida" />
+                    <span className="dica">{formatarTamanho(foto.size)}</span>
                     <button type="button" className="secundario pequeno" onClick={removerFoto}>Remover foto</button>
                   </div>
                 )}
@@ -237,6 +294,7 @@ export default function NovaDenuncia() {
           {etapa === 2 && (
             <>
               <h2 className="titulo-etapa">Onde fica o possível foco?</h2>
+              <CaixaLocalizacao gps={gps} onUsar={usarLocalizacao} onRemover={removerLocalizacao} />
               <label>
                 Bairro de Olinda *
                 <select name="bairro" value={campos.bairro} onChange={alterar}>
@@ -262,11 +320,6 @@ export default function NovaDenuncia() {
                 maxLength={255}
                 placeholder="Praça, comércio ou escola próxima"
               />
-              <div className="caixa-local">
-                <span aria-hidden="true">⌖</span>
-                <strong>Localização por endereço</strong>
-                <span>Por enquanto a localização é informada só pelo endereço, sem GPS nem mapa.</span>
-              </div>
             </>
           )}
 
@@ -285,6 +338,7 @@ export default function NovaDenuncia() {
                 <strong>{campos.bairro}</strong>
                 <span>{campos.endereco}</span>
                 {campos.ponto_referencia && <span>Referência: {campos.ponto_referencia}</span>}
+                {gps.estado === 'ok' && <span>Localização do GPS anexada</span>}
               </div>
               <label className="checkbox">
                 <input
@@ -316,6 +370,38 @@ export default function NovaDenuncia() {
           </div>
         </form>
       </section>
+    </div>
+  )
+}
+
+function CaixaLocalizacao({ gps, onUsar, onRemover }) {
+  if (!localizacaoDisponivel()) {
+    return (
+      <div className="caixa-local">
+        <strong>Localização por endereço</strong>
+        <span>A localização automática só funciona em conexão segura (HTTPS). Informe o endereço abaixo.</span>
+      </div>
+    )
+  }
+  if (gps.estado === 'ok') {
+    return (
+      <div className="caixa-local caixa-local-ok" aria-live="polite">
+        <strong>Localização capturada</strong>
+        {gps.precisao > 0 && <span>Precisão de cerca de {gps.precisao} m.</span>}
+        <span>Confira o endereço abaixo.</span>
+        <button type="button" className="secundario pequeno" onClick={onRemover}>Remover localização</button>
+      </div>
+    )
+  }
+  let rotulo = 'Usar minha localização'
+  if (gps.estado === 'buscando') {
+    rotulo = 'Buscando localização…'
+  }
+  return (
+    <div className="caixa-local" aria-live="polite">
+      <button type="button" onClick={onUsar} disabled={gps.estado === 'buscando'}>{rotulo}</button>
+      <span>Preenche o endereço para você. Use quando estiver perto do foco.</span>
+      {gps.estado === 'erro' && <span className="erro">{gps.mensagem}</span>}
     </div>
   )
 }

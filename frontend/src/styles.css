@@ -199,6 +199,21 @@ button.pequeno { min-height: 2.4rem; padding: 0 1rem; font-size: 0.9rem; }
   color: var(--tinta-suave); font-size: 0.95rem;
 }
 .caixa-local strong { color: var(--tinta); }
+.caixa-local button { align-self: flex-start; margin-bottom: 0.3rem; }
+.caixa-local-ok { background: var(--menta-claro); border-left: 4px solid var(--acao); }
+.caixa-local-ok button { margin: 0.4rem 0 0; }
+.botoes-foto { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.botao-arquivo {
+  position: relative;
+  flex-direction: row; align-items: center; justify-content: center;
+  min-height: 3.1rem; padding: 0 1.3rem; border: 2px solid var(--acao); border-radius: 12px;
+  background: var(--acao); color: #fff; cursor: pointer;
+}
+.botao-arquivo:hover { background: var(--petroleo); border-color: var(--petroleo); }
+.botao-arquivo.secundario { background: #fff; color: var(--acao); }
+.botao-arquivo.secundario:hover { background: var(--menta-claro); }
+.botao-arquivo input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.botao-arquivo:focus-within { outline: 3px solid #f2b705; outline-offset: 2px; }
 .caixa-local span[aria-hidden] { display: none; }
 
 .resumo {
@@ -237,6 +252,7 @@ label.checkbox input { min-height: 0; margin-top: 0.2rem; width: 1.3rem; height:
   .lista-focos, .colunas { grid-template-columns: 1fr; }
   .barra-fixa { display: block; }
   .acoes button { flex: 1; }
+  .botoes-foto .botao-arquivo { flex: 1; }
   .botao-grande.escuro { width: 100%; }
   .rodape { padding-bottom: 6rem; }
 }

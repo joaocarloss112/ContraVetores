@@ -186,3 +186,31 @@ class DenunciaApiTests(TestCase):
     denuncia.refresh_from_db()
     self.assertEqual(denuncia.status, 'VALIDADA')
     self.assertEqual(denuncia.andamentos.get().autor, admin)
+
+
+  def test_criar_denuncia_com_localizacao_do_gps(self):
+    payload = {**self.payload, 'latitude': '-8.0089123456', 'longitude': '-34.8553'}
+    resp = self.client.post(reverse('criar-denuncia'), payload, format='json')
+    self.assertEqual(resp.status_code, 201, resp.data)
+    denuncia = Denuncia.objects.get(protocolo=resp.data['protocolo'])
+    self.assertEqual(str(denuncia.latitude), '-8.008912')
+    self.assertEqual(str(denuncia.longitude), '-34.855300')
+
+  def test_localizacao_incompleta_e_recusada(self):
+    payload = {**self.payload, 'latitude': '-8.0089'}
+    resp = self.client.post(reverse('criar-denuncia'), payload, format='json')
+    self.assertEqual(resp.status_code, 400)
+    self.assertIn('geral', resp.data)
+
+  def test_localizacao_fora_do_planeta_e_recusada(self):
+    payload = {**self.payload, 'latitude': '95', 'longitude': '-34.8'}
+    resp = self.client.post(reverse('criar-denuncia'), payload, format='json')
+    self.assertEqual(resp.status_code, 400)
+    self.assertIn('latitude', resp.data)
+
+  def test_multipart_sem_localizacao_continua_aceito(self):
+    resp = self.client.post(
+        reverse('criar-denuncia'), {**self.payload, 'latitude': '', 'longitude': ''},
+        format='multipart',
+    )
+    self.assertEqual(resp.status_code, 201, resp.data)
