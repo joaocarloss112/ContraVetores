@@ -49,11 +49,21 @@ class Command(BaseCommand):
         '--limpar', action='store_true',
         help='Remove todas as denúncias antes de gerar.',
     )
+    parser.add_argument(
+        '--forcar', action='store_true',
+        help='Gera mesmo se o banco já tiver denúncias.',
+    )
 
   def handle(self, *args, **options):
     if options['limpar']:
       Denuncia.objects.all().delete()
       self.stdout.write('Denúncias anteriores removidas.')
+    elif Denuncia.objects.exists() and not options['forcar']:
+      self.stdout.write(
+          f'O banco já tem {Denuncia.objects.count()} denúncias. Nada gerado '
+          '(use --limpar para recomeçar ou --forcar para somar).'
+      )
+      return
 
     rnd = random.Random(options['seed'])
     agora = timezone.now()

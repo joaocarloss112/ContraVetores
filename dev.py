@@ -3,6 +3,7 @@ import hashlib
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -25,11 +26,56 @@ def python_do_venv():
   return VENV / 'bin' / 'python'
 
 
-def rodar(comando, pasta=RAIZ):
+def rodar(comando, pasta=RAIZ, dica=None):
   resultado = subprocess.run([str(parte) for parte in comando], cwd=pasta)
   if resultado.returncode != 0:
     print(f'\nFalhou: {" ".join(str(parte) for parte in comando)}')
+    if dica:
+      print(dica)
     sys.exit(resultado.returncode)
+
+
+def checar_python():
+  if sys.version_info < (3, 12):
+    print(f'Python {sys.version.split()[0]} encontrado. O projeto precisa do Python 3.12 ou mais novo.')
+    sys.exit(1)
+
+
+def venv_funciona(python):
+  if not python.exists():
+    return False
+  resultado = subprocess.run([str(python), '-m', 'pip', '--version'], capture_output=True)
+  return resultado.returncode == 0
+
+
+def criar_venv():
+  etapa('Criando o ambiente virtual (venv)')
+  try:
+    venv.create(VENV, with_pip=True, clear=True)
+  except Exception:
+    shutil.rmtree(VENV, ignore_errors=True)
+    print('\nNão foi possível criar o venv com pip.')
+    print('No Ubuntu/Debian instale o pacote: sudo apt install python3-venv')
+    sys.exit(1)
+
+
+def porta_livre(porta):
+  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    try:
+      s.bind(('127.0.0.1', porta))
+    except OSError:
+      return False
+  return True
+
+
+def checar_portas(com_front):
+  portas = [8000]
+  if com_front:
+    portas.append(5173)
+  ocupadas = [porta for porta in portas if not porta_livre(porta)]
+  if ocupadas:
+    print(f'\nPorta(s) {", ".join(str(p) for p in ocupadas)} já em uso. Feche o outro servidor e rode de novo.')
+    sys.exit(1)
 
 
 def hash_arquivo(caminho):
@@ -48,9 +94,10 @@ def salvar_marcador(arquivo, marcador):
 
 
 def preparar_backend(python):
-  if not python.exists():
-    etapa('Criando o ambiente virtual (venv)')
-    venv.create(VENV, with_pip=True)
+  if not venv_funciona(python):
+    if VENV.exists():
+      print('venv incompleto ou de outra versão do Python. Recriando.')
+    criar_venv()
 
   requisitos = RAIZ / 'requirements.txt'
   marcador = VENV / '.requirements.sha256'
@@ -62,7 +109,15 @@ def preparar_backend(python):
     etapa('Dependências do back-end já instaladas')
 
   etapa('Aplicando migrações no banco')
-  rodar([python, 'manage.py', 'migrate', '--noinput'])
+  dica = None
+  if os.environ.get('DATABASE_URL'):
+    dica = (
+        'Não deu para falar com o banco do DATABASE_URL. Confira:\n'
+        '  1. O projeto no Supabase está ativo (no plano grátis ele pausa após 7 dias sem uso)\n'
+        '  2. A URL é a do Session pooler (porta 5432, host *.pooler.supabase.com)\n'
+        '  3. A senha não tem @ # / ? e não ficou o [YOUR-PASSWORD]'
+    )
+  rodar([python, 'manage.py', 'migrate', '--noinput'], dica=dica)
 
 
 def existe_superusuario(python):
@@ -78,13 +133,23 @@ def garantir_superusuario(python):
   if existe_superusuario(python):
     return
   etapa('Nenhum usuário da gestão encontrado. Crie um para acessar o /admin')
+  if not sys.stdin.isatty():
+    print('Terminal sem modo interativo (comum no Git Bash do Windows). Rode depois, no PowerShell ou terminal:')
+    print(f'  {python.relative_to(RAIZ)} manage.py createsuperuser')
+    return
   rodar([python, 'manage.py', 'createsuperuser'])
 
 
 def preparar_frontend():
   npm = shutil.which('npm')
-  if npm is None:
-    print('\nnpm não encontrado. Instale o Node.js 20+ (https://nodejs.org) e rode de novo.')
+  node = shutil.which('node')
+  if npm is None or node is None:
+    print('\nNode.js não encontrado. Instale o Node.js 20+ (https://nodejs.org) e rode de novo.')
+    sys.exit(1)
+  versao = subprocess.run([node, '--version'], capture_output=True, text=True).stdout.strip()
+  maior = int(versao.lstrip('v').split('.')[0])
+  if maior < 20:
+    print(f'\nNode.js {versao} encontrado. O front precisa do Node.js 20 ou mais novo.')
     sys.exit(1)
 
   lock = FRONT / 'package-lock.json'
@@ -121,6 +186,7 @@ def parar(processo):
 
 
 def subir_servidores(python, npm, com_front):
+  checar_portas(com_front)
   processos = []
   signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
   etapa('Subindo a API em http://127.0.0.1:8000 (admin em /admin/)')
@@ -142,6 +208,18 @@ def subir_servidores(python, npm, com_front):
     print('\nServidores parados.')
 
 
+def carregar_env():
+  arquivo = RAIZ / '.env'
+  if not arquivo.exists():
+    return
+  for linha in arquivo.read_text(encoding='utf-8').splitlines():
+    linha = linha.strip()
+    if not linha or linha.startswith('#') or '=' not in linha:
+      continue
+    chave, valor = linha.split('=', 1)
+    os.environ.setdefault(chave.strip(), valor.strip().strip('"').strip("'"))
+
+
 def main():
   parser = argparse.ArgumentParser(description='Prepara e sobe o ContraVetores para desenvolvimento.')
   parser.add_argument('--seed', action='store_true', help='gera denúncias fictícias antes de subir')
@@ -149,6 +227,8 @@ def main():
   parser.add_argument('--so-preparar', action='store_true', help='instala e migra, sem subir servidores')
   args = parser.parse_args()
 
+  checar_python()
+  carregar_env()
   if not (RAIZ / '.env').exists():
     print('Aviso: sem arquivo .env, usando SQLite local. Para o Supabase, copie .env.example para .env.')
 

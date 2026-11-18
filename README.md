@@ -181,8 +181,8 @@ dev.py                Prepara e sobe o ambiente de desenvolvimento
 | --- | --- | --- | --- |
 | POST | `/auth/login` | Recebe `username` e `password`, devolve tokens JWT | Público |
 | POST | `/auth/refresh` | Renova o token de acesso | Público |
-| POST | `/api/denuncias` | Registra uma denúncia (multipart, foto opcional) | Público |
-| GET | `/api/denuncias/{protocolo}` | Detalha uma denúncia pelo protocolo | Público |
+| POST | `/api/denuncias` | Registra uma denúncia (multipart, foto opcional). Limite de 20 por hora por conexão | Público |
+| GET | `/api/denuncias/{protocolo}` | Detalha uma denúncia pelo protocolo, sem expor quem fez cada andamento | Público |
 | GET | `/api/admin/denuncias` | Lista todas as denúncias | Gestão (JWT) |
 | GET | `/api/admin/denuncias/{protocolo}` | Detalha uma denúncia com histórico | Gestão (JWT) |
 | POST | `/api/admin/denuncias/{protocolo}/andamentos` | Registra andamento e atualiza o status | Gestão (JWT) |
@@ -216,11 +216,17 @@ Resposta `201`:
   "declaracao_boa_fe": true,
   "status": "RECEBIDA",
   "criado_em": "2026-10-28T18:04:16.112718-03:00",
-  "andamentos": []
+  "andamentos": [
+    {
+      "status": "RECEBIDA",
+      "observacao": "Denúncia recebida pela central.",
+      "criado_em": "2026-10-28T18:04:16.118001-03:00"
+    }
+  ]
 }
 ```
 
-Erros de validação voltam com `400` e a mensagem por campo, por exemplo `{"endereco": ["Este campo é obrigatório."]}`.
+Erros de validação voltam com `400` e a mensagem por campo, por exemplo `{"endereco": ["Este campo é obrigatório."]}`. Acima do limite de envios a resposta é `429`.
 
 ---
 
@@ -233,12 +239,15 @@ Pré-requisitos: Python 3.12+ e Node.js 20+.
 ```bash
 git clone https://github.com/joaocarloss112/ContraVetores
 cd ContraVetores
-python dev.py
+python dev.py     # Windows: py dev.py   |   macOS/Linux: python3 dev.py
 ```
+
+> [!TIP]
+> No Windows, prefira o PowerShell. No Git Bash o `createsuperuser` não consegue pedir a senha; o `dev.py` avisa e mostra o comando para rodar depois.
 
 O script faz tudo sozinho e sobe os dois servidores no mesmo terminal:
 
-1. Cria o `venv` (se não existir) e instala o `requirements.txt` (só quando ele muda)
+1. Confere Python 3.12+ e Node.js 20+, cria o `venv` (ou recria, se estiver quebrado) e instala o `requirements.txt` (só quando ele muda)
 2. Aplica as migrações no banco
 3. Pede para criar o usuário da gestão, se ainda não houver nenhum
 4. Instala as dependências do front (só quando o `package-lock.json` muda)
@@ -248,7 +257,7 @@ O script faz tudo sozinho e sobe os dois servidores no mesmo terminal:
 
 | Comando | O que faz |
 | --- | --- |
-| `python dev.py --seed` | Gera 20 denúncias fictícias antes de subir |
+| `python dev.py --seed` | Gera 20 denúncias fictícias antes de subir (só se o banco estiver vazio) |
 | `python dev.py --so-api` | Sobe só o back-end |
 | `python dev.py --so-preparar` | Instala e migra, sem subir servidores |
 
@@ -263,7 +272,7 @@ source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser  # login da gestão no /admin
-python manage.py seed_denuncias   # opcional: 20 denúncias fictícias
+python manage.py seed_denuncias   # opcional: 20 denúncias fictícias (--limpar recomeça do zero)
 python manage.py runserver
 ```
 
@@ -298,9 +307,10 @@ Variáveis definidas no terminal ou no painel da hospedagem têm prioridade sobr
 | `DATABASE_URL` | Conexão com o PostgreSQL | SQLite local |
 | `DEBUG` | `false` em produção | `true` |
 | `SECRET_KEY` | Chave do Django, obrigatória com `DEBUG=false` | chave de desenvolvimento |
-| `ALLOWED_HOSTS` | Domínios aceitos pela API, separados por vírgula | `*` |
+| `ALLOWED_HOSTS` | Domínios aceitos pela API, separados por vírgula | `*` em dev; no Render, o domínio do serviço |
 | `CORS_ALLOWED_ORIGINS` | Domínio do front autorizado a chamar a API | todos, só com `DEBUG=true` |
-| `CSRF_TRUSTED_ORIGINS` | Domínios confiáveis para formulários do `/admin` | vazio |
+| `CSRF_TRUSTED_ORIGINS` | Domínios confiáveis para formulários do `/admin` | o domínio do Render entra sozinho |
+| `LIMITE_DENUNCIAS` | Quantas denúncias uma conexão pode enviar | `20/hour` |
 | `SERVE_MEDIA` | Django serve as fotos enviadas | igual ao `DEBUG` |
 | `VITE_API_URL` | (front) URL da API no build do Vercel | mesma origem |
 
@@ -309,6 +319,9 @@ Variáveis definidas no terminal ou no painel da hospedagem têm prioridade sobr
 ## Deploy
 
 ### 1. Banco (Supabase)
+
+> [!IMPORTANT]
+> No plano grátis o Supabase **pausa o projeto após 7 dias sem uso**. Se o `dev.py` falhar no passo de migrações, abra o painel e clique em **Restore project**. A URL de conexão continua a mesma.
 
 1. Crie um projeto no [Supabase](https://supabase.com). Região: **East US (North Virginia)**, a mesma do Render no `render.yaml`, para a API e o banco ficarem perto. Guarde a senha do banco.
    Em **Security**, desmarque **Enable Data API**: o Django acessa o banco direto, e com essa opção ligada as tabelas ficariam expostas pela API REST do Supabase.
@@ -340,6 +353,8 @@ Variáveis definidas no terminal ou no painel da hospedagem têm prioridade sobr
 ```bash
 python manage.py test
 ```
+
+O GitHub Actions (`.github/workflows/ci.yml`) roda os testes do back-end, confere se falta migração e faz o build do front a cada push e pull request.
 
 Os testes cobrem a criação de denúncia (com e sem foto), as validações do formulário (boa-fé, endereço, categoria, bairro e limite de 10 MB da foto), a consulta por protocolo, o login JWT e o registro de andamento pela gestão.
 
@@ -395,7 +410,7 @@ _Fazer o sistema funcionar de ponta a ponta e testar com usuários reais._
 _Blindar a aplicação e preparar a apresentação._
 - [ ] a definir
 - [ ] Curva S do fluxo do usuário
-- [ ] Pipeline simples de testes de fluxo do sistema
+- [x] Pipeline simples de testes de fluxo do sistema (GitHub Actions)
 
 **Etapa 06/06: Entrega final** (18/11/2026)
 _Ajustar e entregar à banca._

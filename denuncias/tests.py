@@ -2,13 +2,17 @@ import shutil
 import tempfile
 from io import BytesIO
 
+from unittest import mock
+
 from django.conf import settings
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 from rest_framework.test import APIClient
+from rest_framework.throttling import ScopedRateThrottle
 
 from .models import Andamento, Denuncia
 
@@ -52,6 +56,8 @@ class DenunciaApiTests(TestCase):
     self.assertEqual(resp.data['status'], Denuncia.Status.RECEBIDA)
     self.assertEqual(len(resp.data['protocolo']), 8)
     self.assertTrue(resp.data['foto'])
+    denuncia = Denuncia.objects.get(protocolo=resp.data['protocolo'])
+    self.assertEqual(denuncia.andamentos.get().status, Denuncia.Status.RECEBIDA)
 
   def test_criar_denuncia_sem_foto_guarda_ponto_de_referencia(self):
     resp = self.client.post(reverse('criar-denuncia'), self.payload, format='json')
@@ -103,7 +109,7 @@ class DenunciaApiTests(TestCase):
     self.assertEqual(resp.status_code, 200)
     self.assertEqual(resp.data['status'], Denuncia.Status.RECEBIDA)
     self.assertEqual(resp.data['andamentos'][0]['observacao'], 'Recebida.')
-    self.assertIsNone(resp.data['andamentos'][0]['autor'])
+    self.assertNotIn('autor', resp.data['andamentos'][0])
 
   def test_lista_admin_exige_autenticacao(self):
     resp = self.client.get(reverse('admin-listar-denuncias'))
@@ -153,3 +159,30 @@ class DenunciaApiTests(TestCase):
     )
     self.assertEqual(resp.status_code, 200)
     self.assertIn('access', resp.data)
+
+
+  @mock.patch.object(ScopedRateThrottle, 'THROTTLE_RATES', {'denuncias': '2/hour'})
+  def test_excesso_de_denuncias_do_mesmo_ip_e_bloqueado(self):
+    cache.clear()
+    for _ in range(2):
+      resp = self.client.post(reverse('criar-denuncia'), self.payload, format='json')
+      self.assertEqual(resp.status_code, 201)
+    resp = self.client.post(reverse('criar-denuncia'), self.payload, format='json')
+    self.assertEqual(resp.status_code, 429)
+    cache.clear()
+
+  def test_status_no_admin_so_muda_pelo_andamento(self):
+    admin = get_user_model().objects.create_superuser('chefe', 'c@c.com', 'senha-123')
+    denuncia = Denuncia.objects.create(**self.payload)
+    self.client.force_login(admin)
+    dados = {
+        **self.payload, 'declaracao_boa_fe': 'on',
+        'andamentos-TOTAL_FORMS': '1', 'andamentos-INITIAL_FORMS': '0',
+        'andamentos-MIN_NUM_FORMS': '0', 'andamentos-MAX_NUM_FORMS': '1000',
+        'andamentos-0-status': 'VALIDADA', 'andamentos-0-observacao': 'Vistoria feita.',
+    }
+    resp = self.client.post(f'/admin/denuncias/denuncia/{denuncia.pk}/change/', dados)
+    self.assertEqual(resp.status_code, 302)
+    denuncia.refresh_from_db()
+    self.assertEqual(denuncia.status, 'VALIDADA')
+    self.assertEqual(denuncia.andamentos.get().autor, admin)

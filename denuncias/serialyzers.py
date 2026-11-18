@@ -55,6 +55,17 @@ class DenunciaSerializer(serializers.ModelSerializer):
     return value
 
 
+class AndamentoPublicoSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = Andamento
+    fields = ['status', 'observacao', 'criado_em']
+    read_only_fields = fields
+
+
+class DenunciaPublicaSerializer(DenunciaSerializer):
+  andamentos = AndamentoPublicoSerializer(many=True, read_only=True)
+
+
 class AndamentoCriarSerializer(serializers.Serializer):
   status = serializers.ChoiceField(choices=Denuncia.Status.choices)
   observacao = serializers.CharField(
