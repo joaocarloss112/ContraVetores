@@ -10,7 +10,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
 ![licença](https://img.shields.io/badge/licen%C3%A7a-acad%C3%AAmica-lightgrey)
 
-**Acesse:** _link público do front (Vercel) a preencher após o deploy_ · **API:** _link do Render a preencher_
+**Acesse:** [contra-vetores.vercel.app](https://contra-vetores.vercel.app) · **API:** [contravetores-api.onrender.com](https://contravetores-api.onrender.com/admin/)
 
 ---
 
@@ -413,7 +413,7 @@ _Fazer o sistema funcionar de ponta a ponta e testar com usuários reais._
 - [x] Versionamento no GitHub do código do sistema
 - [x] README mostrando como usar o site, com os documentos já entregues
 - [x] Conexão com banco de dados (PostgreSQL via `DATABASE_URL`)
-- [ ] HiFi validado e disponível via Vercel (configuração pronta, falta publicar e colocar o link no topo)
+- [x] HiFi validado e disponível via Vercel ([contra-vetores.vercel.app](https://contra-vetores.vercel.app))
 
 **Etapa 05/06: Ensaio e preparação para a banca** (11/11/2026)
 _Blindar a aplicação e preparar a apresentação._
