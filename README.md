@@ -10,7 +10,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
 ![licença](https://img.shields.io/badge/licen%C3%A7a-acad%C3%AAmica-lightgrey)
 
-**Acesse:** _link público do front (Vercel) a preencher após o deploy_ · **API:** _link do Render a preencher_
+**Acesse:** [contra-vetores.vercel.app](https://contra-vetores.vercel.app) · **API:** [contravetores-api.onrender.com](https://contravetores-api.onrender.com/admin/)
 
 ---
 
@@ -55,13 +55,16 @@ Explica o que pode ser denunciado, como funcionam as três etapas, o que ter em 
 
 ### 2. Etapa 1: O que você viu
 
-Informe um **título**, escolha a **categoria** do possível foco e **descreva** o que observou. A **foto é opcional** (até 10 MB) e pode ser removida antes de continuar.
+Informe um **título**, escolha a **categoria** do possível foco e **descreva** o que observou. A **foto é opcional**: dá para **tirar na hora** (abre a câmera traseira) ou escolher **da galeria**. Ela é reduzida no próprio aparelho antes do envio, para gastar menos internet.
 
 <img src="docs/img/03-etapa1.png" alt="Etapa 1 do formulário" width="640">
 
 ### 3. Etapa 2: Onde fica
 
-Escolha o **bairro de Olinda**, informe o **endereço ou localização aproximada** e, se quiser, um **ponto de referência**.
+Toque em **Usar minha localização** para o GPS preencher o endereço e o bairro (o endereço vem do OpenStreetMap). Confira o **bairro de Olinda**, o **endereço** e, se quiser, informe um **ponto de referência**.
+
+> [!NOTE]
+> O navegador só libera o GPS em `localhost` ou HTTPS. Testando pelo celular via `http://192.168.x.x`, o botão não aparece e o endereço é digitado normalmente.
 
 <img src="docs/img/04-etapa2.png" alt="Etapa 2 do formulário" width="640">
 
@@ -109,7 +112,7 @@ O front-end apresenta a landing, as orientações e o formulário de denúncia. 
 | Servidor | gunicorn + WhiteNoise |
 | Hospedagem | Vercel (front) e Render (API) |
 
-Em relação ao documento da Etapa 02, o mapa com Leaflet, o PostGIS e o dashboard em Power BI ficaram fora do MVP. A localização é informada por bairro, endereço e ponto de referência, como no HiFi.
+Em relação ao documento da Etapa 02, o mapa com Leaflet, o PostGIS e o dashboard em Power BI ficaram fora do MVP. A localização é informada por bairro, endereço e ponto de referência, como no HiFi, e opcionalmente pelas coordenadas do GPS. No `/admin`, cada denúncia com coordenadas tem um link **Ver no mapa**.
 
 ### Modelo de dados
 
@@ -134,6 +137,8 @@ erDiagram
         string bairro
         string endereco
         string ponto_referencia
+        decimal latitude
+        decimal longitude
         bool declaracao_boa_fe
         string status
         datetime criado_em
@@ -181,8 +186,8 @@ dev.py                Prepara e sobe o ambiente de desenvolvimento
 | --- | --- | --- | --- |
 | POST | `/auth/login` | Recebe `username` e `password`, devolve tokens JWT | Público |
 | POST | `/auth/refresh` | Renova o token de acesso | Público |
-| POST | `/api/denuncias` | Registra uma denúncia (multipart, foto opcional) | Público |
-| GET | `/api/denuncias/{protocolo}` | Detalha uma denúncia pelo protocolo | Público |
+| POST | `/api/denuncias` | Registra uma denúncia (multipart, foto opcional). Limite de 20 por hora por conexão | Público |
+| GET | `/api/denuncias/{protocolo}` | Detalha uma denúncia pelo protocolo, sem expor quem fez cada andamento | Público |
 | GET | `/api/admin/denuncias` | Lista todas as denúncias | Gestão (JWT) |
 | GET | `/api/admin/denuncias/{protocolo}` | Detalha uma denúncia com histórico | Gestão (JWT) |
 | POST | `/api/admin/denuncias/{protocolo}/andamentos` | Registra andamento e atualiza o status | Gestão (JWT) |
@@ -197,6 +202,8 @@ curl -X POST http://localhost:8000/api/denuncias \
   -F bairro="Varadouro" \
   -F endereco="Rua do Sol, 100" \
   -F ponto_referencia="Em frente à escola" \
+  -F latitude=-8.013679 \
+  -F longitude=-34.849123 \
   -F declaracao_boa_fe=true \
   -F foto=@foto.jpg
 ```
@@ -213,14 +220,22 @@ Resposta `201`:
   "bairro": "Varadouro",
   "endereco": "Rua do Sol, 100",
   "ponto_referencia": "Em frente à escola",
+  "latitude": "-8.013679",
+  "longitude": "-34.849123",
   "declaracao_boa_fe": true,
   "status": "RECEBIDA",
   "criado_em": "2026-10-28T18:04:16.112718-03:00",
-  "andamentos": []
+  "andamentos": [
+    {
+      "status": "RECEBIDA",
+      "observacao": "Denúncia recebida pela central.",
+      "criado_em": "2026-10-28T18:04:16.118001-03:00"
+    }
+  ]
 }
 ```
 
-Erros de validação voltam com `400` e a mensagem por campo, por exemplo `{"endereco": ["Este campo é obrigatório."]}`.
+Erros de validação voltam com `400` e a mensagem por campo, por exemplo `{"endereco": ["Este campo é obrigatório."]}`. Acima do limite de envios a resposta é `429`.
 
 ---
 
@@ -233,12 +248,15 @@ Pré-requisitos: Python 3.12+ e Node.js 20+.
 ```bash
 git clone https://github.com/joaocarloss112/ContraVetores
 cd ContraVetores
-python dev.py
+python dev.py     # Windows: py dev.py   |   macOS/Linux: python3 dev.py
 ```
+
+> [!TIP]
+> No Windows, prefira o PowerShell. No Git Bash o `createsuperuser` não consegue pedir a senha; o `dev.py` avisa e mostra o comando para rodar depois.
 
 O script faz tudo sozinho e sobe os dois servidores no mesmo terminal:
 
-1. Cria o `venv` (se não existir) e instala o `requirements.txt` (só quando ele muda)
+1. Confere Python 3.12+ e Node.js 20+, cria o `venv` (ou recria, se estiver quebrado) e instala o `requirements.txt` (só quando ele muda)
 2. Aplica as migrações no banco
 3. Pede para criar o usuário da gestão, se ainda não houver nenhum
 4. Instala as dependências do front (só quando o `package-lock.json` muda)
@@ -248,7 +266,7 @@ O script faz tudo sozinho e sobe os dois servidores no mesmo terminal:
 
 | Comando | O que faz |
 | --- | --- |
-| `python dev.py --seed` | Gera 20 denúncias fictícias antes de subir |
+| `python dev.py --seed` | Gera 20 denúncias fictícias antes de subir (só se o banco estiver vazio) |
 | `python dev.py --so-api` | Sobe só o back-end |
 | `python dev.py --so-preparar` | Instala e migra, sem subir servidores |
 
@@ -263,7 +281,7 @@ source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser  # login da gestão no /admin
-python manage.py seed_denuncias   # opcional: 20 denúncias fictícias
+python manage.py seed_denuncias   # opcional: 20 denúncias fictícias (--limpar recomeça do zero)
 python manage.py runserver
 ```
 
@@ -298,9 +316,10 @@ Variáveis definidas no terminal ou no painel da hospedagem têm prioridade sobr
 | `DATABASE_URL` | Conexão com o PostgreSQL | SQLite local |
 | `DEBUG` | `false` em produção | `true` |
 | `SECRET_KEY` | Chave do Django, obrigatória com `DEBUG=false` | chave de desenvolvimento |
-| `ALLOWED_HOSTS` | Domínios aceitos pela API, separados por vírgula | `*` |
+| `ALLOWED_HOSTS` | Domínios aceitos pela API, separados por vírgula | `*` em dev; no Render, o domínio do serviço |
 | `CORS_ALLOWED_ORIGINS` | Domínio do front autorizado a chamar a API | todos, só com `DEBUG=true` |
-| `CSRF_TRUSTED_ORIGINS` | Domínios confiáveis para formulários do `/admin` | vazio |
+| `CSRF_TRUSTED_ORIGINS` | Domínios confiáveis para formulários do `/admin` | o domínio do Render entra sozinho |
+| `LIMITE_DENUNCIAS` | Quantas denúncias uma conexão pode enviar | `20/hour` |
 | `SERVE_MEDIA` | Django serve as fotos enviadas | igual ao `DEBUG` |
 | `VITE_API_URL` | (front) URL da API no build do Vercel | mesma origem |
 
@@ -309,6 +328,9 @@ Variáveis definidas no terminal ou no painel da hospedagem têm prioridade sobr
 ## Deploy
 
 ### 1. Banco (Supabase)
+
+> [!IMPORTANT]
+> No plano grátis o Supabase **pausa o projeto após 7 dias sem uso**. Se o `dev.py` falhar no passo de migrações, abra o painel e clique em **Restore project**. A URL de conexão continua a mesma.
 
 1. Crie um projeto no [Supabase](https://supabase.com). Região: **East US (North Virginia)**, a mesma do Render no `render.yaml`, para a API e o banco ficarem perto. Guarde a senha do banco.
    Em **Security**, desmarque **Enable Data API**: o Django acessa o banco direto, e com essa opção ligada as tabelas ficariam expostas pela API REST do Supabase.
@@ -340,6 +362,8 @@ Variáveis definidas no terminal ou no painel da hospedagem têm prioridade sobr
 ```bash
 python manage.py test
 ```
+
+O GitHub Actions (`.github/workflows/ci.yml`) roda os testes do back-end, confere se falta migração e faz o build do front a cada push e pull request.
 
 Os testes cobrem a criação de denúncia (com e sem foto), as validações do formulário (boa-fé, endereço, categoria, bairro e limite de 10 MB da foto), a consulta por protocolo, o login JWT e o registro de andamento pela gestão.
 
@@ -389,13 +413,13 @@ _Fazer o sistema funcionar de ponta a ponta e testar com usuários reais._
 - [x] Versionamento no GitHub do código do sistema
 - [x] README mostrando como usar o site, com os documentos já entregues
 - [x] Conexão com banco de dados (PostgreSQL via `DATABASE_URL`)
-- [ ] HiFi validado e disponível via Vercel (configuração pronta, falta publicar e colocar o link no topo)
+- [x] HiFi validado e disponível via Vercel ([contra-vetores.vercel.app](https://contra-vetores.vercel.app))
 
 **Etapa 05/06: Ensaio e preparação para a banca** (11/11/2026)
 _Blindar a aplicação e preparar a apresentação._
 - [ ] a definir
 - [ ] Curva S do fluxo do usuário
-- [ ] Pipeline simples de testes de fluxo do sistema
+- [x] Pipeline simples de testes de fluxo do sistema (GitHub Actions)
 
 **Etapa 06/06: Entrega final** (18/11/2026)
 _Ajustar e entregar à banca._

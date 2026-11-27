@@ -47,6 +47,12 @@ export const api = {
     } catch {
       dados = null
     }
+    if (resp.status === 429) {
+      const erro = new Error('Limite de envios')
+      erro.status = 429
+      erro.dados = { geral: ['Muitas denúncias enviadas desta conexão. Aguarde um pouco e tente de novo.'] }
+      throw erro
+    }
     if (!resp.ok) {
       const erro = new Error('Falha na requisição')
       erro.status = resp.status

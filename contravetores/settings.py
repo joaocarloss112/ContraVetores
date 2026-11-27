@@ -29,7 +29,10 @@ if not SECRET_KEY:
     raise RuntimeError('Defina SECRET_KEY nas variáveis de ambiente.')
   SECRET_KEY = 'dev-inseguro-apenas-para-uso-local-0000'
 
-ALLOWED_HOSTS = env_lista('ALLOWED_HOSTS', '*')
+if DEBUG:
+  ALLOWED_HOSTS = env_lista('ALLOWED_HOSTS', '*')
+else:
+  ALLOWED_HOSTS = env_lista('ALLOWED_HOSTS', 'localhost,127.0.0.1')
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
   ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -77,10 +80,16 @@ TEMPLATES = [
 WSGI_APPLICATION = 'contravetores.wsgi.application'
 
 
+if DEBUG:
+  CONEXAO_MAX_IDADE = 0
+else:
+  CONEXAO_MAX_IDADE = 600
+
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
-        conn_max_age=600,
+        conn_max_age=CONEXAO_MAX_IDADE,
+        conn_health_checks=True,
     )
 }
 
@@ -133,17 +142,23 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_THROTTLE_RATES': {
+        'denuncias': os.environ.get('LIMITE_DENUNCIAS', '20/hour'),
+    },
 }
 
 
 CORS_ALLOWED_ORIGINS = env_lista('CORS_ALLOWED_ORIGINS')
 CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
 CSRF_TRUSTED_ORIGINS = env_lista('CSRF_TRUSTED_ORIGINS')
+if RENDER_EXTERNAL_HOSTNAME:
+  CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
 
 if not DEBUG:
   SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
   SESSION_COOKIE_SECURE = True
   CSRF_COOKIE_SECURE = True
+  SECURE_HSTS_SECONDS = 3600
 
 AUTH_USER_MODEL = 'denuncias.Usuario'
 

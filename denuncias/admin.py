@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import Andamento, Denuncia, Usuario
 
 
@@ -17,13 +18,25 @@ class DenunciaAdmin(admin.ModelAdmin):
       'categoria',
       'bairro',
       'endereco',
+      'mapa',
       'status',
       'declaracao_boa_fe',
       'criado_em',
   ]
   search_fields = ['protocolo', 'titulo', 'endereco','bairro']
   list_filter = ['status', 'categoria', 'bairro', 'declaracao_boa_fe']
+  readonly_fields = ['protocolo', 'status', 'criado_em', 'mapa']
   inlines = [AndamentoInline]
+
+  @admin.display(description='Mapa')
+  def mapa(self, obj):
+    if obj.latitude is None or obj.longitude is None:
+      return '-'
+    url = (
+        'https://www.openstreetmap.org/'
+        f'?mlat={obj.latitude}&mlon={obj.longitude}#map=18/{obj.latitude}/{obj.longitude}'
+    )
+    return format_html('<a href="{}" target="_blank" rel="noopener">Ver no mapa</a>', url)
 
   def save_formset(self, request, form, formset, change):
     instances = formset.save(commit=False)

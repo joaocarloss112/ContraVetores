@@ -1,3 +1,5 @@
+from decimal import ROUND_HALF_UP, Decimal
+
 from rest_framework import serializers
 from .models import Andamento, Denuncia
 
@@ -18,8 +20,22 @@ class AndamentoSerializer(serializers.ModelSerializer):
     return obj.autor.get_full_name() or obj.autor.username
 
 
+class CoordenadaField(serializers.DecimalField):
+  def to_representation(self, valor):
+    return str(valor)
+
+
+def campo_coordenada(limite):
+  return CoordenadaField(
+      max_digits=20, decimal_places=15, required=False, allow_null=True,
+      min_value=-limite, max_value=limite,
+  )
+
+
 class DenunciaSerializer(serializers.ModelSerializer):
   andamentos = AndamentoSerializer(many=True, read_only=True)
+  latitude = campo_coordenada(90)
+  longitude = campo_coordenada(180)
 
   class Meta:
     model = Denuncia
@@ -32,6 +48,8 @@ class DenunciaSerializer(serializers.ModelSerializer):
         'bairro',
         'endereco',
         'ponto_referencia',
+        'latitude',
+        'longitude',
         'declaracao_boa_fe',
         'status',
         'criado_em',
@@ -41,6 +59,19 @@ class DenunciaSerializer(serializers.ModelSerializer):
     extra_kwargs = {
         'endereco': {'required': True, 'allow_blank': False, 'allow_null': False},
     }
+
+  def validate(self, dados):
+    tem_latitude = dados.get('latitude') is not None
+    tem_longitude = dados.get('longitude') is not None
+    if tem_latitude != tem_longitude:
+      raise serializers.ValidationError(
+          {'geral': ['Envie latitude e longitude juntas.']}
+      )
+    seis_casas = Decimal('0.000001')
+    for campo in ['latitude', 'longitude']:
+      if dados.get(campo) is not None:
+        dados[campo] = dados[campo].quantize(seis_casas, rounding=ROUND_HALF_UP)
+    return dados
 
   def validate_foto(self, value):
     if value and value.size > FOTO_TAMANHO_MAXIMO:
@@ -53,6 +84,17 @@ class DenunciaSerializer(serializers.ModelSerializer):
           'Você precisa confirmar que as informações são prestadas de boa-fé e verdadeiras'
       )
     return value
+
+
+class AndamentoPublicoSerializer(serializers.ModelSerializer):
+  class Meta:
+    model = Andamento
+    fields = ['status', 'observacao', 'criado_em']
+    read_only_fields = fields
+
+
+class DenunciaPublicaSerializer(DenunciaSerializer):
+  andamentos = AndamentoPublicoSerializer(many=True, read_only=True)
 
 
 class AndamentoCriarSerializer(serializers.Serializer):

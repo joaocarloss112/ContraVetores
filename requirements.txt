@@ -1,6 +1,5 @@
 Django>=5.2.8,<5.3
 djangorestframework>=3.14.0
-djangorestframework-gis>=1.0
 psycopg[binary]>=3.1.8
 djangorestframework-simplejwt>=5.3.0
 django-cors-headers>=4.3.0
